@@ -80,12 +80,13 @@ MASAT is designed for extensibility, and new scanner modules should include acco
 ## Contributing
 Contributions are welcome! Please follow these steps:
 
-Fork the repository.
-Create a feature branch (git checkout -b feature/my-new-feature).
-Commit your changes (git commit -am 'Add new feature').
-Push to your branch (git push origin feature/my-new-feature).
-Create a new Pull Request.
-See CONTRIBUTING.md for more details.
+- Fork the repository.
+- Create a feature branch (git checkout -b feature/my-new-feature).
+- Commit your changes (git commit -am 'Add new feature').
+- Push to your branch (git push origin feature/my-new-feature).
+- Create a new Pull Request.
+
+See [CONTRIBUTING.md](https://github.com/automatesecurity/masat/blob/main/CONTRIBUTING.md) for more details.
 
 ## License
 This project is licensed under the Apache License 2.0. See the LICENSE file for details.
