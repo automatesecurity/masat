@@ -14,6 +14,9 @@ import socket
 from urllib.parse import urlparse
 from datetime import datetime
 
+# Import Utils and Integrations
+from utils.slack_integration import format_findings_for_slack, send_slack_notification
+
 # Import scanner modules
 import scanners.web_scanner as web_scanner # TODO: Expand capabilties beyond passive to active checks
 import scanners.nmap_scanner as nmap_scanner
@@ -157,6 +160,10 @@ def main():
     print(output)
     logging.info("Scan completed.")
     logging.info(output)
+
+    formatted_message = format_findings_for_slack(results)
+    slack_webhook_url = "https://hooks.slack.com/services/your/webhook/url"
+    asyncio.run(send_slack_notification(slack_webhook_url, formatted_message, verbose=True))
 
 if __name__ == "__main__":
     main()
