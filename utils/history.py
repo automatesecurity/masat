@@ -10,12 +10,22 @@ from typing import Any
 
 
 def default_db_path() -> str:
+    """Return the default DB path (no side effects).
+
+    Note: do not create directories here. Only create the directory when the DB
+    is actually used (e.g., when --store is set).
+    """
+
     base = os.path.join(os.path.expanduser("~"), ".masat")
-    os.makedirs(base, exist_ok=True)
     return os.path.join(base, "masat.db")
 
 
 def _connect(db_path: str) -> sqlite3.Connection:
+    # Ensure parent directory exists at time of use.
+    parent = os.path.dirname(os.path.abspath(db_path))
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+
     conn = sqlite3.connect(db_path)
     conn.execute(
         """

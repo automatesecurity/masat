@@ -176,7 +176,7 @@ def main():
     )
     parser.add_argument(
         "--db",
-        default=default_db_path(),
+        default=None,
         help="SQLite DB path for --store (default: ~/.masat/masat.db).",
     )
 
@@ -285,9 +285,10 @@ def main():
     # Optional local history
     if args.store:
         normalized = [f.to_dict() for f in normalize_findings(results)]
-        run_id = store_run(args.db, args.target, sorted(list(scans)), results, normalized)
+        db_path = args.db or default_db_path()
+        run_id = store_run(db_path, args.target, sorted(list(scans)), results, normalized)
         if args.verbose:
-            print(f"Stored run in DB: {args.db} (id={run_id})")
+            print(f"Stored run in DB: {db_path} (id={run_id})")
 
     # Optional Slack notification
     if args.slack_webhook:
