@@ -18,6 +18,9 @@ from datetime import datetime
 # Import Utils and Integrations
 from utils.slack_integration import format_findings_for_slack, send_slack_notification
 from utils.reporting import flatten_findings, to_csv, to_html
+from utils.playbook import generate_playbook
+from utils.schema import normalize_findings
+from utils.history import default_db_path, store_run
 
 from scanners.registry import discover_scanners
 
@@ -154,6 +157,17 @@ def main():
         help="Optional path to write output (defaults to stdout).",
     )
 
+    parser.add_argument(
+        "--store",
+        action="store_true",
+        help="Store this run (raw results + normalized findings) in the local SQLite history DB.",
+    )
+    parser.add_argument(
+        "--db",
+        default=default_db_path(),
+        help="SQLite DB path for --store (default: ~/.masat/masat.db).",
+    )
+
     # Integrations
     parser.add_argument(
         "--slack-webhook",
@@ -204,10 +218,12 @@ def main():
     summary, synthesis, remediation = generate_summary(results)
 
     if args.output == "json":
+        normalized = [f.to_dict() for f in normalize_findings(results)]
         payload = {
             "target": args.target,
             "scans": sorted(list(scans)),
             "results": results,
+            "findings": normalized,
             "summary": summary,
             "synthesis": synthesis,
             "remediation": remediation,
@@ -242,6 +258,13 @@ def main():
 
     logging.info("Scan completed.")
     logging.info(output)
+
+    # Optional local history
+    if args.store:
+        normalized = [f.to_dict() for f in normalize_findings(results)]
+        run_id = store_run(args.db, args.target, sorted(list(scans)), results, normalized)
+        if args.verbose:
+            print(f"Stored run in DB: {args.db} (id={run_id})")
 
     # Optional Slack notification
     if args.slack_webhook:
