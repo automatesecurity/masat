@@ -22,8 +22,15 @@ def default_db_path() -> str:
 
 def _connect(db_path: str) -> sqlite3.Connection:
     # Ensure parent directory exists at time of use.
+    #
+    # IMPORTANT: `db_path` can be user-provided (CLI/API). Creating directories
+    # for arbitrary paths is an unsafe pattern and is flagged by CodeQL.
+    # We only auto-create the default MASAT DB directory; for any custom path,
+    # require the directory to already exist.
     parent = os.path.dirname(os.path.abspath(db_path))
-    if parent:
+    default_parent = os.path.dirname(os.path.abspath(default_db_path()))
+
+    if parent and os.path.commonpath([parent, default_parent]) == default_parent:
         os.makedirs(parent, exist_ok=True)
 
     conn = sqlite3.connect(db_path)
