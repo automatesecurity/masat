@@ -136,6 +136,18 @@ def main():
     )
     parser.add_argument("--verbose", action="store_true", help="Print status to stdout")
 
+    parser.add_argument(
+        "--output",
+        choices=["text", "json"],
+        default="text",
+        help="Output format for results.",
+    )
+    parser.add_argument(
+        "--output-file",
+        default=None,
+        help="Optional path to write output (defaults to stdout).",
+    )
+
     # Integrations
     parser.add_argument(
         "--slack-webhook",
@@ -216,7 +228,7 @@ def main():
     # Optional Slack notification
     if args.slack_webhook:
         formatted_message = format_findings_for_slack(results)
-        loop.run_until_complete(send_slack_notification(args.slack_webhook, formatted_message, verbose=args.verbose))
+        asyncio.run(send_slack_notification(args.slack_webhook, formatted_message, verbose=args.verbose))
     else:
         logging.info("Slack webhook not configured; skipping Slack notification.")
 
