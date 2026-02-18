@@ -35,11 +35,11 @@ class DummySession:
         return DummyResponse(self.headers)
 
 @pytest.mark.asyncio
-async def test_check_header_x_xss_protection_present():
-    """Verify check_header returns the X-XSS-Protection value when present."""
-    dummy_session = DummySession(headers={"X-XSS-Protection": "1; mode=block"})
-    result = await check_header(dummy_session, "http://example.com", "X-XSS-Protection")
-    assert result == "1; mode=block"
+async def test_check_header_x_content_type_options_present():
+    """Verify check_header returns the X-Content-Type-Options value when present."""
+    dummy_session = DummySession(headers={"X-Content-Type-Options": "nosniff"})
+    result = await check_header(dummy_session, "http://example.com", "X-Content-Type-Options")
+    assert result == "nosniff"
 
 @pytest.mark.asyncio
 async def test_check_header_hsts_valid():
@@ -60,15 +60,15 @@ async def test_check_header_x_frame_options_present():
 @pytest.mark.asyncio
 async def test_check_header_csp_present():
     """Verify check_header returns the CSP value when present."""
-    dummy_session = DummySession(headers={"CSP": "default-src 'self'"})
-    result = await check_header(dummy_session, "http://example.com", "CSP")
+    dummy_session = DummySession(headers={"Content-Security-Policy": "default-src 'self'"})
+    result = await check_header(dummy_session, "http://example.com", "Content-Security-Policy")
     assert result == "default-src 'self'"
 
 @pytest.mark.asyncio
 async def test_check_header_exception():
     """Verify check_header returns None when an exception is raised."""
     dummy_session = DummySession(headers={}, raise_exception=True)
-    result = await check_header(dummy_session, "http://example.com", "X-XSS-Protection")
+    result = await check_header(dummy_session, "http://example.com", "X-Content-Type-Options")
     assert result is None
 
 @pytest.mark.asyncio
