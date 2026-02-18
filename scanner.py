@@ -136,6 +136,11 @@ def main():
         help="Comma-separated list of scans to run (e.g., web,tls,nmap). Overrides individual scan flags.",
     )
     parser.add_argument("--verbose", action="store_true", help="Print status to stdout")
+    parser.add_argument(
+        "--playbook",
+        action="store_true",
+        help="Generate a safe follow-up playbook (no exploitation) from findings.",
+    )
 
     parser.add_argument(
         "--output",
@@ -207,6 +212,8 @@ def main():
             "synthesis": synthesis,
             "remediation": remediation,
         }
+        if args.playbook:
+            payload["playbook"] = generate_playbook(args.target, results)
         output = json.dumps(payload, indent=2, sort_keys=True)
     elif args.output == "csv":
         rows = flatten_findings(results)
