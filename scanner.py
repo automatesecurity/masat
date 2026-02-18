@@ -17,6 +17,7 @@ from datetime import datetime
 
 # Import Utils and Integrations
 from utils.slack_integration import format_findings_for_slack, send_slack_notification
+from utils.reporting import flatten_findings, to_csv, to_html
 
 from scanners.registry import discover_scanners
 
@@ -136,6 +137,18 @@ def main():
     )
     parser.add_argument("--verbose", action="store_true", help="Print status to stdout")
 
+    parser.add_argument(
+        "--output",
+        choices=["text", "json", "csv", "html"],
+        default="text",
+        help="Output format for results.",
+    )
+    parser.add_argument(
+        "--output-file",
+        default=None,
+        help="Optional path to write output (defaults to stdout).",
+    )
+
     # Integrations
     parser.add_argument(
         "--slack-webhook",
@@ -195,6 +208,12 @@ def main():
             "remediation": remediation,
         }
         output = json.dumps(payload, indent=2, sort_keys=True)
+    elif args.output == "csv":
+        rows = flatten_findings(results)
+        output = to_csv(rows)
+    elif args.output == "html":
+        rows = flatten_findings(results)
+        output = to_html(title=f"MASAT Report — {args.target}", rows=rows)
     else:
         output = (
             "\n=== Scan Summary ===\n" + summary +
@@ -203,8 +222,12 @@ def main():
         )
 
     if args.output_file:
-        with open(args.output_file, "w", encoding="utf-8") as f:
-            f.write(output)
+        mode = "wb" if args.output == "html" else "w"
+        with open(args.output_file, mode, encoding=None if mode == "wb" else "utf-8") as f:
+            if mode == "wb":
+                f.write(output.encode("utf-8"))
+            else:
+                f.write(output)
         if args.verbose:
             print(f"Wrote output to: {args.output_file}")
     else:
@@ -216,7 +239,7 @@ def main():
     # Optional Slack notification
     if args.slack_webhook:
         formatted_message = format_findings_for_slack(results)
-        loop.run_until_complete(send_slack_notification(args.slack_webhook, formatted_message, verbose=args.verbose))
+        asyncio.run(send_slack_notification(args.slack_webhook, formatted_message, verbose=args.verbose))
     else:
         logging.info("Slack webhook not configured; skipping Slack notification.")
 
