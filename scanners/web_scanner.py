@@ -15,11 +15,6 @@ from packaging import version
 # Define vulnerability checks grouped by category.
 VULN_CHECKS = {
     "Security Header Misconfigurations": {
-        "Missing X-XSS-Protection": {  # TODO: deprecated; keep for now (see issue #2)
-            "header": "X-XSS-Protection",
-            "severity": 7,
-            "remediation": "Implement X-XSS-Protection header to prevent XSS attacks."
-        },
         "Missing HSTS": {
             "header": "Strict-Transport-Security",
             "severity": 7,
@@ -35,6 +30,21 @@ VULN_CHECKS = {
             "severity": 8,
             "remediation": "Use Content Security Policy to mitigate cross-site scripting attacks."
         },
+        "Missing X-Content-Type-Options": {
+            "header": "X-Content-Type-Options",
+            "severity": 6,
+            "remediation": "Set X-Content-Type-Options: nosniff to reduce MIME-sniffing attacks."
+        },
+        "Missing Referrer-Policy": {
+            "header": "Referrer-Policy",
+            "severity": 5,
+            "remediation": "Set a Referrer-Policy to control referrer leakage (e.g., strict-origin-when-cross-origin)."
+        },
+        "Missing Permissions-Policy": {
+            "header": "Permissions-Policy",
+            "severity": 5,
+            "remediation": "Set a Permissions-Policy to explicitly allow/deny powerful browser features."
+        }
     }
 }
 
