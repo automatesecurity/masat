@@ -171,7 +171,8 @@ async def scan(target, verbose=False):
     async with aiohttp.ClientSession() as session:
         # Check for missing security headers.
         tasks = []
-        print(f"[WEB SCANNER] Checking headers for {target}...")
+        if verbose:
+            print(f"[WEB SCANNER] Checking headers for {target}...")
         for finding, details in VULN_CHECKS["Security Header Misconfigurations"].items():
             header_name = finding.split("Missing ")[-1]
             tasks.append(check_header(session, target, header_name))
@@ -194,7 +195,8 @@ async def scan(target, verbose=False):
             }
         
         # Check for risky HTTP methods.
-        print(f"[WEB SCANNER] Checking for risky HTTP methods...")
+        if verbose:
+            print(f"[WEB SCANNER] Checking for risky HTTP methods...")
         risky_methods = {"PUT", "DELETE", "TRACE", "CONNECT"}
         allowed_methods = await check_http_methods(session, target)
         enabled_risky_methods = [method for method in allowed_methods if method in risky_methods]
@@ -208,7 +210,8 @@ async def scan(target, verbose=False):
             }
 
         # Check for outdated third party dependencies (jQuery, AngularJS).
-        print(f"[WEB SCANNER] Checking for vulnerable and EOL libraries and dependecies...")
+        if verbose:
+            print(f"[WEB SCANNER] Checking for vulnerable and EOL libraries and dependecies...")
         outdated_libs = await check_third_party_libs(session, target, verbose)
         if outdated_libs:
             findings["Outdated Third Party Dependencies"] = outdated_libs
@@ -219,7 +222,8 @@ async def scan(target, verbose=False):
             findings["WordPress Detection"] = wp_vulns
 
         # Detect web server technology using the Server header.
-        print(f"[WEB SCANNER] Fingerprinting {target}...")
+        if verbose:
+            print(f"[WEB SCANNER] Fingerprinting {target}...")
         server_header = await check_server(session, target)
         if server_header:
             findings["Web Server Technology"] = {

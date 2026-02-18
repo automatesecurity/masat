@@ -8,6 +8,7 @@ GitHub: https://github.com/automatesecurity
 """
 import argparse
 import asyncio
+import json
 import logging
 import os
 import socket
@@ -123,6 +124,19 @@ def main():
     parser.add_argument("--crawler", action="store_true", help="Run web crawler scan")
     parser.add_argument("--tls", action="store_true", help="Run SSL/TLS scan")
     parser.add_argument("--verbose", action="store_true", help="Print status to stdout")
+
+    parser.add_argument(
+        "--output",
+        choices=["text", "json"],
+        default="text",
+        help="Output format for results.",
+    )
+    parser.add_argument(
+        "--output-file",
+        default=None,
+        help="Optional path to write output (defaults to stdout).",
+    )
+
     args = parser.parse_args()
 
     # Determine which scans to run.
@@ -148,16 +162,35 @@ def main():
         print(f"Logging to file: {log_file}")
         print(f"Starting scan on target: {args.target}")
 
-    loop = asyncio.get_event_loop()
-    results = loop.run_until_complete(run_scans(args.target, scans, args.verbose))
+    results = asyncio.run(run_scans(args.target, scans, args.verbose))
 
     summary, synthesis, remediation = generate_summary(results)
-    output = (
-        "\n=== Scan Summary ===\n" + summary +
-        "\n\n=== Synthesis ===\n" + synthesis +
-        "\n\n=== Vulnerability Remediation ===\n" + remediation
-    )
-    print(output)
+
+    if args.output == "json":
+        payload = {
+            "target": args.target,
+            "scans": sorted(list(scans)),
+            "results": results,
+            "summary": summary,
+            "synthesis": synthesis,
+            "remediation": remediation,
+        }
+        output = json.dumps(payload, indent=2, sort_keys=True)
+    else:
+        output = (
+            "\n=== Scan Summary ===\n" + summary +
+            "\n\n=== Synthesis ===\n" + synthesis +
+            "\n\n=== Vulnerability Remediation ===\n" + remediation
+        )
+
+    if args.output_file:
+        with open(args.output_file, "w", encoding="utf-8") as f:
+            f.write(output)
+        if args.verbose:
+            print(f"Wrote output to: {args.output_file}")
+    else:
+        print(output)
+
     logging.info("Scan completed.")
     logging.info(output)
 
