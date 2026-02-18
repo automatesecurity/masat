@@ -15,23 +15,23 @@ from packaging import version
 # Define vulnerability checks grouped by category.
 VULN_CHECKS = {
     "Security Header Misconfigurations": {
-        "Missing X-XSS-Protection": { # TODO: This is actually deprecated as a control, however, let's add it for now - remove later
-            "check": "check_x_xss_protection",
+        "Missing X-XSS-Protection": {  # TODO: deprecated; keep for now (see issue #2)
+            "header": "X-XSS-Protection",
             "severity": 7,
             "remediation": "Implement X-XSS-Protection header to prevent XSS attacks."
         },
         "Missing HSTS": {
-            "check": "check_hsts",
+            "header": "Strict-Transport-Security",
             "severity": 7,
             "remediation": "Enable HSTS to force HTTPS connections."
         },
         "Missing X-Frame-Options": {
-            "check": "check_x_frame_options",
+            "header": "X-Frame-Options",
             "severity": 6,
             "remediation": "Implement X-Frame-Options header to prevent clickjacking."
         },
         "Missing CSP": {
-            "check": "check_csp",
+            "header": "Content-Security-Policy",
             "severity": 8,
             "remediation": "Use Content Security Policy to mitigate cross-site scripting attacks."
         },
@@ -173,7 +173,7 @@ async def scan(target, verbose=False):
         tasks = []
         print(f"[WEB SCANNER] Checking headers for {target}...")
         for finding, details in VULN_CHECKS["Security Header Misconfigurations"].items():
-            header_name = finding.split("Missing ")[-1]
+            header_name = details["header"]
             tasks.append(check_header(session, target, header_name))
         headers_results = await asyncio.gather(*tasks)
         for idx, (finding, details) in enumerate(VULN_CHECKS["Security Header Misconfigurations"].items()):
