@@ -22,7 +22,12 @@ def parse_target(target: str) -> TargetInfo:
 
     if parsed.scheme and parsed.hostname:
         host = parsed.hostname
-        return TargetInfo(raw=t, kind="url", host=host, scheme=parsed.scheme, port=parsed.port)
+        try:
+            port = parsed.port
+        except ValueError:
+            # urllib.parse raises ValueError for malformed/out-of-range ports
+            port = None
+        return TargetInfo(raw=t, kind="url", host=host, scheme=parsed.scheme, port=port)
 
     # CIDR?
     try:
