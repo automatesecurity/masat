@@ -6,6 +6,9 @@ License: Apache 2.0 - https://www.apache.org/licenses/LICENSE-2.0
 LinkedIn: https://www.linkedin.com/in/danielewood
 GitHub: https://github.com/automatesecurity
 """
+
+SCAN_ID = "tls"
+DESCRIPTION = "TLS/SSL scan (protocols, ciphers, cert validity)."
 import asyncio
 import ssl
 import logging

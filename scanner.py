@@ -18,11 +18,7 @@ from datetime import datetime
 # Import Utils and Integrations
 from utils.slack_integration import format_findings_for_slack, send_slack_notification
 
-# Import scanner modules
-import scanners.web_scanner as web_scanner # TODO: Expand capabilties beyond passive to active checks
-import scanners.nmap_scanner as nmap_scanner
-import scanners.web_crawler as web_crawler # TODO: Expand crawler capabilities, see roadmap on github
-import scanners.tls_scanner as tls_scanner
+from scanners.registry import discover_scanners
 
 def resolve_target(target):
     """Extract the hostname from the URL and resolve it to an IP address."""
@@ -50,18 +46,23 @@ def setup_logger(target):
 
 async def run_scans(target, scans, verbose=False):
     """Run selected scan modules asynchronously."""
+    registry = discover_scanners()
+
     results = {}
     tasks = []
-    if "web" in scans:
-        tasks.append(web_scanner.scan(target, verbose))
-    if "crawler" in scans:
-        tasks.append(web_crawler.scan(target, verbose))
-    if "tls" in scans:
-        tasks.append(tls_scanner.scan(target, verbose))
-    if "nmap" in scans:
+
+    for scan_id in sorted(scans):
+        spec = registry.get(scan_id)
+        if not spec:
+            raise ValueError(f"Unknown scan id: {scan_id}. Use --list-scans to see available scanners.")
+
         # Resolve the target to get a valid IP address or hostname for nmap.
-        resolved_target = resolve_target(target)
-        tasks.append(nmap_scanner.scan(resolved_target, verbose))
+        if scan_id == "nmap":
+            scan_target = resolve_target(target)
+        else:
+            scan_target = target
+
+        tasks.append(spec.scan(scan_target, verbose))
 
     scan_results = await asyncio.gather(*tasks)
     for res in scan_results:
@@ -117,12 +118,22 @@ def main():
     parser = argparse.ArgumentParser(
         description="Modular Attack Surface Analysis Tool"
     )
-    parser.add_argument("--target", required=True, help="Target URL or IP address")
+    parser.add_argument("--target", required=False, help="Target URL or IP address")
     parser.add_argument("--scan-all", action="store_true", help="Run all scans")
+    parser.add_argument("--list-scans", action="store_true", help="List available scans and exit")
+
+    # Backwards-compatible scan flags
     parser.add_argument("--web", action="store_true", help="Run web vulnerability scan")
     parser.add_argument("--nmap", action="store_true", help="Run port and service scan")
     parser.add_argument("--crawler", action="store_true", help="Run web crawler scan")
     parser.add_argument("--tls", action="store_true", help="Run SSL/TLS scan")
+
+    # Preferred: explicit scan selection
+    parser.add_argument(
+        "--scans",
+        default=None,
+        help="Comma-separated list of scans to run (e.g., web,tls,nmap). Overrides individual scan flags.",
+    )
     parser.add_argument("--verbose", action="store_true", help="Print status to stdout")
 
     # Integrations
@@ -133,9 +144,23 @@ def main():
     )
     args = parser.parse_args()
 
+    registry = discover_scanners()
+
+    if args.list_scans:
+        print("Available scans:")
+        for scan_id, spec in registry.items():
+            desc = f" — {spec.description}" if spec.description else ""
+            print(f"- {scan_id}{desc}")
+        return
+
+    if not args.target:
+        parser.error("--target is required unless using --list-scans")
+
     # Determine which scans to run.
-    if args.scan_all:
-        scans = {"web", "crawler", "tls", "nmap"}
+    if args.scans:
+        scans = {s.strip() for s in args.scans.split(",") if s.strip()}
+    elif args.scan_all:
+        scans = set(registry.keys())
     else:
         scans = set()
         if args.web:
@@ -148,7 +173,7 @@ def main():
             scans.add("nmap")
 
     if not scans:
-        parser.error("No scan type selected. Use --scan-all or specify at least one scan flag.")
+        parser.error("No scan type selected. Use --scan-all, --scans, or specify at least one scan flag.")
 
     log_file = setup_logger(args.target)
     logging.info(f"Starting scan on target: {args.target}")
