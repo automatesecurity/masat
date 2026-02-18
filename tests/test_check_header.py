@@ -61,7 +61,7 @@ async def test_check_header_x_frame_options_present():
 async def test_check_header_csp_present():
     """Verify check_header returns the CSP value when present."""
     dummy_session = DummySession(headers={"CSP": "default-src 'self'"})
-    result = await check_header(dummy_session, "http://example.com", "CSP")
+    result = await check_header(dummy_session, "http://example.com", "Content-Security-Policy")
     assert result == "default-src 'self'"
 
 @pytest.mark.asyncio
