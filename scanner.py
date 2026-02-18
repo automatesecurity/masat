@@ -8,6 +8,7 @@ GitHub: https://github.com/automatesecurity
 """
 import argparse
 import asyncio
+import json
 import logging
 import os
 import socket
@@ -155,16 +156,35 @@ def main():
         print(f"Logging to file: {log_file}")
         print(f"Starting scan on target: {args.target}")
 
-    loop = asyncio.get_event_loop()
-    results = loop.run_until_complete(run_scans(args.target, scans, args.verbose))
+    results = asyncio.run(run_scans(args.target, scans, args.verbose))
 
     summary, synthesis, remediation = generate_summary(results)
-    output = (
-        "\n=== Scan Summary ===\n" + summary +
-        "\n\n=== Synthesis ===\n" + synthesis +
-        "\n\n=== Vulnerability Remediation ===\n" + remediation
-    )
-    print(output)
+
+    if args.output == "json":
+        payload = {
+            "target": args.target,
+            "scans": sorted(list(scans)),
+            "results": results,
+            "summary": summary,
+            "synthesis": synthesis,
+            "remediation": remediation,
+        }
+        output = json.dumps(payload, indent=2, sort_keys=True)
+    else:
+        output = (
+            "\n=== Scan Summary ===\n" + summary +
+            "\n\n=== Synthesis ===\n" + synthesis +
+            "\n\n=== Vulnerability Remediation ===\n" + remediation
+        )
+
+    if args.output_file:
+        with open(args.output_file, "w", encoding="utf-8") as f:
+            f.write(output)
+        if args.verbose:
+            print(f"Wrote output to: {args.output_file}")
+    else:
+        print(output)
+
     logging.info("Scan completed.")
     logging.info(output)
 
