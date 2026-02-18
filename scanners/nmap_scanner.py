@@ -6,6 +6,9 @@ License: Apache 2.0 - https://www.apache.org/licenses/LICENSE-2.0
 LinkedIn: https://www.linkedin.com/in/danielewood
 GitHub: https://github.com/automatesecurity
 """
+
+SCAN_ID = "nmap"
+DESCRIPTION = "Port and service scan via nmap."
 import asyncio
 import logging
 

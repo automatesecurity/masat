@@ -12,6 +12,9 @@ import aiohttp
 import re
 from packaging import version
 
+SCAN_ID = "web"
+DESCRIPTION = "Web vulnerability scan (headers, risky methods, library fingerprints)."
+
 # Define vulnerability checks grouped by category.
 VULN_CHECKS = {
     "Security Header Misconfigurations": {

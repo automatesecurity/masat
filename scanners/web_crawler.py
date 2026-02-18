@@ -6,6 +6,9 @@ License: Apache 2.0 - https://www.apache.org/licenses/LICENSE-2.0
 LinkedIn: https://www.linkedin.com/in/danielewood
 GitHub: https://github.com/automatesecurity
 """
+
+SCAN_ID = "crawler"
+DESCRIPTION = "Web crawler (discover endpoints and common sensitive paths)."
 import asyncio
 import logging
 import aiohttp
