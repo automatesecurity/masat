@@ -123,6 +123,13 @@ def main():
     parser.add_argument("--crawler", action="store_true", help="Run web crawler scan")
     parser.add_argument("--tls", action="store_true", help="Run SSL/TLS scan")
     parser.add_argument("--verbose", action="store_true", help="Print status to stdout")
+
+    # Integrations
+    parser.add_argument(
+        "--slack-webhook",
+        default=os.getenv("SLACK_WEBHOOK_URL"),
+        help="Slack Incoming Webhook URL (or set SLACK_WEBHOOK_URL). If unset, Slack notification is skipped.",
+    )
     args = parser.parse_args()
 
     # Determine which scans to run.
@@ -161,9 +168,12 @@ def main():
     logging.info("Scan completed.")
     logging.info(output)
 
-    formatted_message = format_findings_for_slack(results)
-    slack_webhook_url = "https://hooks.slack.com/services/your/webhook/url"
-    asyncio.run(send_slack_notification(slack_webhook_url, formatted_message, verbose=True))
+    # Optional Slack notification
+    if args.slack_webhook:
+        formatted_message = format_findings_for_slack(results)
+        loop.run_until_complete(send_slack_notification(args.slack_webhook, formatted_message, verbose=args.verbose))
+    else:
+        logging.info("Slack webhook not configured; skipping Slack notification.")
 
 if __name__ == "__main__":
     main()
