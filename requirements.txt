@@ -1,3 +1,4 @@
 aiohttp==3.11.14
 packaging==24.2
 pytest==8.3.5
+pytest-asyncio==0.25.3
