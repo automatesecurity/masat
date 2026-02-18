@@ -20,6 +20,8 @@ from utils.slack_integration import format_findings_for_slack, send_slack_notifi
 from utils.reporting import flatten_findings, to_csv, to_html
 
 from scanners.registry import discover_scanners
+from utils.targets import parse_target
+from utils.workflows import plan_scans
 
 def resolve_target(target):
     """Extract the hostname from the URL and resolve it to an IP address."""
@@ -122,6 +124,16 @@ def main():
     parser.add_argument("--target", required=False, help="Target URL or IP address")
     parser.add_argument("--scan-all", action="store_true", help="Run all scans")
     parser.add_argument("--list-scans", action="store_true", help="List available scans and exit")
+    parser.add_argument(
+        "--smart",
+        action="store_true",
+        help="Choose a sensible scan plan automatically based on the target type.",
+    )
+    parser.add_argument(
+        "--plan",
+        action="store_true",
+        help="Print the smart plan (selected scans + rationale) and exit.",
+    )
 
     # Backwards-compatible scan flags
     parser.add_argument("--web", action="store_true", help="Run web vulnerability scan")
@@ -175,7 +187,18 @@ def main():
         parser.error("--target is required unless using --list-scans")
 
     # Determine which scans to run.
-    if args.scans:
+    info = parse_target(args.target)
+
+    if args.smart or args.plan:
+        smart_plan = plan_scans(info)
+        scans = set(smart_plan.scans)
+        if args.plan:
+            print("Smart scan plan:")
+            print(f"Target: {smart_plan.target} ({info.kind})")
+            for line in smart_plan.rationale:
+                print(f"- {line}")
+            return
+    elif args.scans:
         scans = {s.strip() for s in args.scans.split(",") if s.strip()}
     elif args.scan_all:
         scans = set(registry.keys())
@@ -191,7 +214,7 @@ def main():
             scans.add("nmap")
 
     if not scans:
-        parser.error("No scan type selected. Use --scan-all, --scans, or specify at least one scan flag.")
+        parser.error("No scan type selected. Use --smart/--plan, --scan-all, --scans, or specify at least one scan flag.")
 
     log_file = setup_logger(args.target)
     logging.info(f"Starting scan on target: {args.target}")
