@@ -30,3 +30,9 @@ jobs:
       - name: Run tests (with coverage)
         run: |
           pytest -q --cov=. --cov-report=term-missing
+
+      - name: API import smoke test (FastAPI optional)
+        if: matrix.python-version == '3.12'
+        run: |
+          pip install -r requirements-api.txt
+          python -c "import api.app; print('api_import_ok')"
