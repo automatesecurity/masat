@@ -1,0 +1,15 @@
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.coverage
+.pytest_cache/
+
+# Next.js UI
+ui/.next/
+ui/node_modules/
+ui/out/
+ui/.env.local
