@@ -10,17 +10,26 @@ export default async function Home({
   const sp = (await searchParams) || {};
   const target = typeof sp.target === "string" ? sp.target : "";
   const scans = typeof sp.scans === "string" ? sp.scans : "";
-  const smart = sp.smart === "0" ? false : true;
+
+  const run = sp.run === "1";
+
+  const smartParam = sp.smart;
+  const smartEnabled =
+    smartParam === undefined
+      ? true
+      : Array.isArray(smartParam)
+        ? smartParam.includes("1")
+        : smartParam === "1";
 
   let scanResult: Awaited<ReturnType<typeof runScan>> | null = null;
   let scanError: string | null = null;
 
-  if (target) {
+  if (run && target) {
     try {
       scanResult = await runScan({
         target,
         scans: scans || undefined,
-        smart,
+        smart: smartEnabled,
         store: true,
       });
     } catch (e: unknown) {
@@ -59,11 +68,16 @@ export default async function Home({
         </label>
 
         <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input type="checkbox" name="smart" value="1" defaultChecked={smart} />
+          <input type="checkbox" name="smart" value="1" defaultChecked={smartEnabled} />
           Smart mode (auto-select scans)
         </label>
 
-        <button type="submit" style={{ padding: "10px 14px", width: 140 }}>
+        <button
+          type="submit"
+          name="run"
+          value="1"
+          style={{ padding: "10px 14px", width: 140 }}
+        >
           Scan
         </button>
       </form>
