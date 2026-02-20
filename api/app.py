@@ -33,6 +33,22 @@ from utils.history import default_db_path, store_run, list_runs
 
 app = FastAPI(title="MASAT API", version="0.1")
 
+# Allow browser-based UI (Next.js) to call the API during local development.
+# For production, restrict origins.
+try:
+    from fastapi.middleware.cors import CORSMiddleware
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+        allow_credentials=True,
+        allow_methods=["*"]
+        ,
+        allow_headers=["*"],
+    )
+except Exception:
+    pass
+
 
 class ScanRequest(BaseModel):
     target: str
