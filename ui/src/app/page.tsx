@@ -56,163 +56,200 @@ export default async function Home({
   const findings = (scanResult?.findings || []).slice().sort(bySeverityDesc);
 
   return (
-    <main className={styles.container}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>MASAT Portal</h1>
-        <p className={styles.subtitle}>
-          Prototype UI for MASAT. Enter a URL, domain, IP, or CIDR; the UI calls the MASAT FastAPI server.
-        </p>
-      </header>
-
-      <section className={styles.card}>
-        <form method="GET" className={styles.form}>
-          <label className={styles.label}>
-            Target
-            <span className={styles.hint}>URL, domain, IP, or CIDR</span>
-            <input
-              className={styles.input}
-              name="target"
-              placeholder="https://example.com"
-              defaultValue={target}
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-            />
-          </label>
-
-          <label className={styles.label}>
-            Scans
-            <span className={styles.hint}>
-              Optional comma-separated list (try: {availableScans.slice(0, 5).map((s) => s.id).join(", ")}
-              {availableScans.length > 5 ? ", …" : ""})
-            </span>
-            <input
-              className={styles.input}
-              name="scans"
-              placeholder="web,tls,nuclei"
-              defaultValue={scans}
-              list="scan-ids"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-            />
-            <datalist id="scan-ids">
-              {availableScans.map((s) => (
-                <option key={s.id} value={s.id} />
-              ))}
-            </datalist>
-          </label>
-
-          <div className={styles.row}>
-            <label className={styles.checkbox}>
-              <input type="checkbox" name="smart" value="1" defaultChecked={smartEnabled} />
-              Smart mode (auto-select scans)
-            </label>
-
-            <button type="submit" name="run" value="1" className={styles.button}>
-              Scan
-            </button>
+    <div className={styles.shell}>
+      <aside className={styles.sidebar}>
+        <div className={styles.brand}>
+          <div className={styles.logo} />
+          <div className={styles.brandText}>
+            <div className={styles.brandName}>MASAT</div>
+            <div className={styles.brandSub}>Attack surface signals</div>
           </div>
-        </form>
-      </section>
+        </div>
 
-      {scanError && (
-        <section className={`${styles.card} ${styles.error}`}>
-          <strong>Scan failed:</strong> {scanError}
-        </section>
-      )}
+        <nav className={styles.nav}>
+          <div className={`${styles.navItem} ${styles.navItemActive}`}>Scan</div>
+          <div className={styles.navItem}>Runs</div>
+          <div className={styles.navItem}>Settings</div>
+        </nav>
+      </aside>
 
-      {scanResult && (
-        <section className={styles.card}>
-          <h2 className={styles.sectionTitle}>Results</h2>
-          <div className={styles.meta}>
-            <div>
-              <strong>Target:</strong> {scanResult.target}
-            </div>
-            <div>
-              <strong>Run ID:</strong> {String(scanResult.runId)}
-            </div>
-            <div>
-              <strong>Scans:</strong> {scanResult.scans?.join(", ")}
-            </div>
-            <div>
-              <strong>Findings:</strong> {findings.length}
-            </div>
+      <main className={styles.content}>
+        <div className={styles.topbar}>
+          <div className={styles.pageTitle}>
+            <h1 className={styles.title}>Scan</h1>
+            <p className={styles.subtitle}>
+              Modern SaaS-style portal UI (prototype). Runs scans via the MASAT FastAPI server.
+            </p>
           </div>
 
-          <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-            {findings.length === 0 ? (
-              <div className={styles.meta}>No findings returned.</div>
-            ) : (
-              findings.map((f, idx) => {
-                const sev = sevLabel(f.severity ?? 0);
-                return (
-                  <div key={`${f.category}-${f.title}-${idx}`} className={styles.finding}>
-                    <div className={styles.findingHeader}>
-                      <span className={`${styles.badge} ${sev.cls}`}>{sev.label}</span>
-                      <span className={styles.findingTitle}>{f.title}</span>
-                      <span className={styles.meta}>({f.category})</span>
-                    </div>
+          <div className={styles.pills}>
+            <span className={styles.pill}>API: {process.env.NEXT_PUBLIC_MASAT_API_BASE || "http://127.0.0.1:8000"}</span>
+            <span className={styles.pill}>Scanners: {availableScans.length}</span>
+            <span className={styles.pill}>History: {runs.length} loaded</span>
+          </div>
+        </div>
 
-                    {f.details ? <div className={styles.meta}>{f.details}</div> : null}
+        <div className={styles.grid}>
+          <section className={styles.card}>
+            <div className={styles.cardHeader}>
+              <div className={styles.sectionTitle}>New scan</div>
+              <div className={styles.meta}>Tip: bookmark “Load” links, not “Run again.”</div>
+            </div>
 
-                    {f.remediation ? (
-                      <div className={styles.meta}>
-                        <strong>Remediation:</strong> {f.remediation}
+            <form method="GET" className={styles.form}>
+              <label className={styles.label}>
+                Target
+                <span className={styles.hint}>URL, domain, IP, or CIDR</span>
+                <input
+                  className={styles.input}
+                  name="target"
+                  placeholder="https://example.com"
+                  defaultValue={target}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                />
+              </label>
+
+              <label className={styles.label}>
+                Scans
+                <span className={styles.hint}>
+                  Optional comma-separated list (try: {availableScans.slice(0, 6).map((s) => s.id).join(", ")}
+                  {availableScans.length > 6 ? ", …" : ""})
+                </span>
+                <input
+                  className={styles.input}
+                  name="scans"
+                  placeholder="web,tls,nuclei"
+                  defaultValue={scans}
+                  list="scan-ids"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                />
+                <datalist id="scan-ids">
+                  {availableScans.map((s) => (
+                    <option key={s.id} value={s.id} />
+                  ))}
+                </datalist>
+              </label>
+
+              <div className={styles.row}>
+                <label className={styles.checkbox}>
+                  <input type="checkbox" name="smart" value="1" defaultChecked={smartEnabled} />
+                  Smart mode (auto-select scans)
+                </label>
+
+                <button type="submit" name="run" value="1" className={styles.button}>
+                  Run scan
+                </button>
+              </div>
+            </form>
+          </section>
+
+          {scanError && (
+            <section className={`${styles.card} ${styles.error}`}>
+              <div className={styles.sectionTitle}>Error</div>
+              <div className={styles.meta} style={{ marginTop: 10 }}>
+                <strong>Scan failed:</strong> {scanError}
+              </div>
+            </section>
+          )}
+
+          {scanResult && (
+            <section className={styles.card}>
+              <div className={styles.cardHeader}>
+                <div className={styles.sectionTitle}>Results</div>
+                <div className={styles.meta}>Run #{String(scanResult.runId)}</div>
+              </div>
+
+              <div className={styles.meta}>
+                <div>
+                  <strong>Target:</strong> {scanResult.target}
+                </div>
+                <div>
+                  <strong>Scans:</strong> {scanResult.scans?.join(", ")}
+                </div>
+                <div>
+                  <strong>Findings:</strong> {findings.length}
+                </div>
+              </div>
+
+              <div className={styles.findingsGrid}>
+                {findings.length === 0 ? (
+                  <div className={styles.meta}>No findings returned.</div>
+                ) : (
+                  findings.map((f, idx) => {
+                    const sev = sevLabel(f.severity ?? 0);
+                    return (
+                      <div key={`${f.category}-${f.title}-${idx}`} className={styles.finding}>
+                        <div className={styles.findingHeader}>
+                          <span className={`${styles.badge} ${sev.cls}`}>{sev.label}</span>
+                          <span className={styles.findingTitle}>{f.title}</span>
+                          <span className={styles.meta}>({f.category})</span>
+                        </div>
+
+                        {f.details ? <div className={styles.meta}>{f.details}</div> : null}
+
+                        {f.remediation ? (
+                          <div className={styles.meta}>
+                            <strong>Remediation:</strong> {f.remediation}
+                          </div>
+                        ) : null}
                       </div>
-                    ) : null}
-                  </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <details style={{ marginTop: 12 }}>
+                <summary className={styles.meta}>Raw findings JSON</summary>
+                <pre className={styles.kv}>{JSON.stringify(scanResult.findings, null, 2)}</pre>
+              </details>
+            </section>
+          )}
+
+          <section className={styles.card}>
+            <div className={styles.cardHeader}>
+              <div className={styles.sectionTitle}>Recent runs</div>
+              <div className={styles.meta}>SQLite-backed history from the API server</div>
+            </div>
+
+            <ul className={styles.runs}>
+              {runs.map((r) => {
+                const qs = new URLSearchParams({
+                  target: r.target,
+                  scans: r.scans.join(","),
+                  smart: "1",
+                });
+                const rerun = new URLSearchParams({
+                  target: r.target,
+                  scans: r.scans.join(","),
+                  smart: "1",
+                  run: "1",
+                });
+
+                return (
+                  <li key={r.id} className={styles.runItem}>
+                    <span className={styles.meta}>
+                      <strong>#{r.id}</strong> — {r.target} — {new Date(r.ts * 1000).toLocaleString()} — [
+                      {r.scans.join(", ")}]
+                    </span>
+                    <span className={styles.runLinks}>
+                      <a className={styles.runLink} href={`/?${qs.toString()}`}>
+                        Load
+                      </a>
+                      <a className={styles.runLink} href={`/?${rerun.toString()}`}>
+                        Run again
+                      </a>
+                    </span>
+                  </li>
                 );
-              })
-            )}
-          </div>
-
-          <details style={{ marginTop: 14 }}>
-            <summary>Raw findings JSON</summary>
-            <pre className={styles.kv}>{JSON.stringify(scanResult.findings, null, 2)}</pre>
-          </details>
-        </section>
-      )}
-
-      <section className={styles.card}>
-        <h2 className={styles.sectionTitle}>Recent runs</h2>
-        <p className={styles.meta}>
-          Stored by the API server in SQLite (default: <code>~/.masat/masat.db</code>).
-        </p>
-
-        <ul className={styles.runs}>
-          {runs.map((r) => {
-            const qs = new URLSearchParams({
-              target: r.target,
-              scans: r.scans.join(","),
-              smart: "1",
-            });
-            const rerun = new URLSearchParams({
-              target: r.target,
-              scans: r.scans.join(","),
-              smart: "1",
-              run: "1",
-            });
-
-            return (
-              <li key={r.id} className={styles.runItem}>
-                <span>
-                  <strong>#{r.id}</strong> — {r.target} — {new Date(r.ts * 1000).toLocaleString()} — [
-                  {r.scans.join(", ")}]
-                </span>
-                <span style={{ display: "flex", gap: 12 }}>
-                  <a className={styles.runLink} href={`/?${qs.toString()}`}>
-                    Load
-                  </a>
-                  <a className={styles.runLink} href={`/?${rerun.toString()}`}>
-                    Run again
-                  </a>
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-    </main>
+              })}
+            </ul>
+          </section>
+        </div>
+      </main>
+    </div>
   );
 }
