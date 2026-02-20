@@ -21,10 +21,11 @@ It consolidates multiple scanners into one workflow so you can point it at a **U
 ## Installation
 
 ### Prerequisites
-- Python 3.11+ recommended
+- Python **3.11+**
 - `pip`
 - Optional: `nmap`
 - Optional: `nuclei` (ProjectDiscovery)
+- Optional (UI): Node.js 18+
 
 ### Clone
 ```bash
@@ -32,26 +33,38 @@ git clone git@github.com:automatesecurity/masat.git
 cd masat
 ```
 
-### Install dependencies
+### Install (recommended)
+MASAT is packaged as a Python module with a `masat` CLI.
+
 ```bash
-pip install -r requirements.txt
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -U pip
+pip install -e .
 ```
 
-Optional dev dependencies:
+Optional dev extras:
 ```bash
-pip install -r requirements-dev.txt
+pip install -e ".[dev]"
 ```
 
-Optional API dependencies:
+Optional API extras:
 ```bash
-pip install -r requirements-api.txt
+pip install -e ".[api]"
+```
+
+### Makefile shortcuts
+```bash
+make venv
+make install-dev
+make test
 ```
 
 ## Usage
 
 ### List available scans
 ```bash
-python3 scanner.py --list-scans
+masat scans
 ```
 
 ### Smart mode (recommended)
@@ -59,30 +72,30 @@ MASAT chooses a scan plan automatically and explains why.
 
 Show the plan only:
 ```bash
-python3 scanner.py --target https://example.com --plan
+masat plan https://example.com
 ```
 
 Run the plan:
 ```bash
-python3 scanner.py --target https://example.com --smart --verbose
+masat scan https://example.com --smart --verbose
 ```
 
 ### Explicit scan selection
 Run a specific set of scanners:
 ```bash
-python3 scanner.py --target example.com --scans web,tls,nmap,banners
+masat scan example.com --scans web,tls,nmap,banners
 ```
 
 Legacy flags still work:
 ```bash
-python3 scanner.py --target http://example.com --web --tls --verbose
+masat scan http://example.com --web --tls --verbose
 ```
 
 ### Nuclei CVE detection
 The `nuclei` scanner shells out to the `nuclei` binary.
 
 ```bash
-python3 scanner.py --target https://example.com --scans nuclei --verbose
+masat scan https://example.com --scans nuclei --verbose
 ```
 
 Install nuclei: https://github.com/projectdiscovery/nuclei
@@ -90,34 +103,34 @@ Install nuclei: https://github.com/projectdiscovery/nuclei
 ### Output formats
 Text (default):
 ```bash
-python3 scanner.py --target https://example.com --smart
+masat scan https://example.com --smart
 ```
 
 JSON:
 ```bash
-python3 scanner.py --target https://example.com --smart --output json --output-file results.json
+masat scan https://example.com --smart --output json --output-file results.json
 ```
 
 CSV:
 ```bash
-python3 scanner.py --target https://example.com --web --output csv --output-file report.csv
+masat scan https://example.com --web --output csv --output-file report.csv
 ```
 
 HTML:
 ```bash
-python3 scanner.py --target https://example.com --web --output html --output-file report.html
+masat scan https://example.com --web --output html --output-file report.html
 ```
 
 ### Store run history (SQLite)
 Persist runs locally (raw results + normalized findings) for later UI / diffing.
 
 ```bash
-python3 scanner.py --target https://example.com --smart --output json --store
+masat scan https://example.com --smart --output json --store
 ```
 
 Override DB path:
 ```bash
-python3 scanner.py --target https://example.com --smart --store --db /tmp/masat.db
+masat scan https://example.com --smart --store --db /tmp/masat.db
 ```
 
 ### Slack notifications (optional)
@@ -125,28 +138,28 @@ Slack notifications are **skipped** unless configured.
 
 ```bash
 export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
-python3 scanner.py --target https://example.com --web
+masat scan https://example.com --web
 ```
 
 Or pass a webhook explicitly:
 ```bash
-python3 scanner.py --target https://example.com --web --slack-webhook https://hooks.slack.com/services/...
+masat scan https://example.com --web --slack-webhook https://hooks.slack.com/services/...
 ```
 
 ### Generate a safe follow-up playbook
 This does **not** exploit anything. It generates recommended next steps/commands.
 
 ```bash
-python3 scanner.py --target https://example.com --smart --output json --playbook
+masat scan https://example.com --smart --output json --playbook
 ```
 
-## API server (foundation for UI portal)
-A minimal FastAPI app is included to support the long-term UI portal goal.
+## API server (optional)
+A minimal FastAPI app is included (and used by the UI).
 
 Run it:
 ```bash
-pip install -r requirements.txt -r requirements-api.txt
-uvicorn api.app:app --reload
+pip install -e ".[api]"
+masat serve --reload
 ```
 
 Endpoints:
@@ -154,6 +167,20 @@ Endpoints:
 - `GET /scans`
 - `POST /scan` (runs scans; optionally stores to SQLite)
 - `GET /runs`
+
+## UI (optional)
+A simple Next.js UI is included under `ui/`.
+
+Dev mode:
+```bash
+cd ui
+npm install
+npm run dev
+```
+
+By default it talks to the API server at `http://localhost:8000`. Copy `ui/.env.local.example` to `ui/.env.local` to override.
+
+---
 
 ## Testing & CI
 Run tests:
@@ -168,6 +195,7 @@ pytest --cov=. --cov-report=term-missing
 
 CI:
 - GitHub Actions runs pytest + coverage on PRs and pushes.
+- CI also includes a FastAPI import smoke test (API remains optional for core usage).
 
 ## Contributing
 See [CONTRIBUTING.md](https://github.com/automatesecurity/masat/blob/main/CONTRIBUTING.md).
