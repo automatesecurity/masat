@@ -1,0 +1,15 @@
+
+# Python packaging/build artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.coverage
+.pytest_cache/
+
+# Local virtualenv
+.venv/
+
+# Local run logs
+scan_*.log
