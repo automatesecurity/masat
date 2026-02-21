@@ -10,7 +10,7 @@ export default function AppShell({
   pills,
   children,
 }: {
-  active: "scan" | "runs" | "assets" | "changes" | "seed";
+  active: "dashboard" | "changes" | "scan" | "runs" | "assets" | "seed";
   title: string;
   subtitle?: string;
   pills?: ReactNode;
@@ -29,8 +29,17 @@ export default function AppShell({
 
         <nav className={styles.nav} aria-label="Primary">
           <Link
-            className={`${styles.navItem} ${active === "changes" ? styles.navItemActive : ""}`}
+            className={`${styles.navItem} ${active === "dashboard" ? styles.navItemActive : ""}`}
             href="/"
+          >
+            <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+              <Icon name="dashboard" />
+              Dashboard
+            </span>
+          </Link>
+          <Link
+            className={`${styles.navItem} ${active === "changes" ? styles.navItemActive : ""}`}
+            href="/changes"
           >
             <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
               <Icon name="changes" />

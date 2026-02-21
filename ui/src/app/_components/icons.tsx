@@ -1,4 +1,4 @@
-export function Icon({ name }: { name: "changes" | "scan" | "runs" | "assets" | "seed" }) {
+export function Icon({ name }: { name: "dashboard" | "changes" | "scan" | "runs" | "assets" | "seed" }) {
   const common = {
     width: 16,
     height: 16,
@@ -8,6 +8,19 @@ export function Icon({ name }: { name: "changes" | "scan" | "runs" | "assets" | 
   } as const;
 
   // Minimal inline icons (Linear-ish).
+  if (name === "dashboard") {
+    return (
+      <svg {...common}>
+        <path
+          d="M3.2 3.2h4.9v4.9H3.2V3.2Zm4.7 0h4.9v2.9H7.9V3.2ZM7.9 7.9h4.9v4.9H7.9V7.9ZM3.2 9.1h4.9v3.7H3.2V9.1Z"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
   if (name === "changes") {
     return (
       <svg {...common}>

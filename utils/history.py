@@ -82,6 +82,51 @@ def count_runs(db_path: str) -> int:
         conn.close()
 
 
+def count_runs_since(db_path: str, since_ts: int) -> int:
+    conn = _connect(db_path)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(1) FROM runs WHERE ts >= ?", (int(since_ts),))
+        row = cur.fetchone()
+        return int(row[0] or 0) if row else 0
+    finally:
+        conn.close()
+
+
+def list_latest_runs_per_target(db_path: str, limit_targets: int = 200) -> list[dict[str, Any]]:
+    """Return the latest run row for each target (id, ts, target, scans).
+
+    Uses MAX(id) as the latest run marker.
+    """
+
+    conn = _connect(db_path)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT r.id, r.ts, r.target, r.scans
+            FROM runs r
+            INNER JOIN (
+              SELECT target, MAX(id) AS max_id
+              FROM runs
+              GROUP BY target
+              ORDER BY max_id DESC
+              LIMIT ?
+            ) t
+            ON r.target = t.target AND r.id = t.max_id
+            ORDER BY r.id DESC
+            """,
+            (int(limit_targets),),
+        )
+        rows = cur.fetchall()
+        return [
+            {"id": r[0], "ts": r[1], "target": r[2], "scans": json.loads(r[3]) if r[3] else []}
+            for r in rows
+        ]
+    finally:
+        conn.close()
+
+
 def list_runs(db_path: str, limit: int = 20, offset: int = 0) -> list[dict[str, Any]]:
     conn = _connect(db_path)
     try:
