@@ -187,6 +187,35 @@ def list_runs_for_target(db_path: str, target: str, limit: int = 20) -> list[dic
         conn.close()
 
 
+def list_runs_matching_host(db_path: str, host: str, limit: int = 20) -> list[dict[str, Any]]:
+    """List recent runs whose target string contains the host.
+
+    This supports cases where stored targets are URLs (e.g., https://host) but
+    assets are stored as hostnames.
+
+    Note: this is a best-effort match.
+    """
+
+    h = (host or "").strip().lower().rstrip(".")
+    if not h:
+        return []
+
+    conn = _connect(db_path)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, ts, target, scans FROM runs WHERE LOWER(target) LIKE ? ORDER BY id DESC LIMIT ?",
+            (f"%{h}%", int(limit)),
+        )
+        rows = cur.fetchall()
+        return [
+            {"id": r[0], "ts": r[1], "target": r[2], "scans": json.loads(r[3]) if r[3] else []}
+            for r in rows
+        ]
+    finally:
+        conn.close()
+
+
 def get_run(db_path: str, run_id: int) -> dict[str, Any] | None:
     """Fetch a single run including stored results + findings."""
     conn = _connect(db_path)

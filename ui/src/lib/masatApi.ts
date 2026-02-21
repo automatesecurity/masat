@@ -115,6 +115,19 @@ export async function fetchDashboard(): Promise<DashboardMetrics> {
   return data.metrics as DashboardMetrics;
 }
 
+export type AssetDetail = {
+  asset: AssetRow | null;
+  latestRun: RunRow | null;
+  runDetail: RunDetail | null;
+  openPorts: { port: string; service: string; version: string }[];
+};
+
+export async function fetchAssetDetail(value: string): Promise<AssetDetail> {
+  const res = await fetch(`${baseUrl()}/asset?value=${encodeURIComponent(value)}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`MASAT /asset failed: ${res.status}`);
+  return (await res.json()) as AssetDetail;
+}
+
 export async function runScan(params: {
   target: string;
   scans?: string;
