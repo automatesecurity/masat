@@ -38,15 +38,12 @@ export default async function ScanPage({
   return (
     <AppShell
       active="scan"
-      title="Scan"
-      subtitle="Create a stored run (safe on refresh)."
+      title="Assess"
+      subtitle="Run an assessment and store evidence. Default is outcomes-first; methodology is optional."
       pills={
         <>
-          <span className={styles.pill}>
-            API: {process.env.NEXT_PUBLIC_MASAT_API_BASE || "http://127.0.0.1:8000"}
-          </span>
-          <span className={styles.pill}>Scanners: {availableScans.length}</span>
-          <span className={styles.pill}>Recent runs: {runsPage.total}</span>
+          <span className={styles.pill}>Recent evidence: {runsPage.total}</span>
+          <span className={styles.pill}>Smart mode: {smartEnabled ? "On" : "Off"}</span>
         </>
       }
     >
@@ -72,28 +69,38 @@ export default async function ScanPage({
             />
           </label>
 
-          <label className={styles.label}>
-            Scans
-            <span className={styles.hint}>
-              Optional comma-separated list (try: {availableScans.slice(0, 6).map((s) => s.id).join(", ")}
-              {availableScans.length > 6 ? ", …" : ""})
-            </span>
-            <input
-              className={styles.input}
-              name="scans"
-              placeholder="web,tls,nuclei"
-              defaultValue={scans}
-              list="scan-ids"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-            />
-            <datalist id="scan-ids">
-              {availableScans.map((s) => (
-                <option key={s.id} value={s.id} />
-              ))}
-            </datalist>
-          </label>
+          <details>
+            <summary className={styles.meta}>Methodology (advanced)</summary>
+            <div className={styles.meta} style={{ marginTop: 8 }}>
+              Most users can leave this alone. Smart mode will select a safe default plan.
+            </div>
+
+            <div className={styles.form} style={{ marginTop: 10 }}>
+              <label className={styles.label}>
+                Scan plan (optional)
+                <span className={styles.hint}>Comma-separated scan ids</span>
+                <input
+                  className={styles.input}
+                  name="scans"
+                  placeholder="web,tls,nuclei"
+                  defaultValue={scans}
+                  list="scan-ids"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                />
+                <datalist id="scan-ids">
+                  {availableScans.map((s) => (
+                    <option key={s.id} value={s.id} />
+                  ))}
+                </datalist>
+              </label>
+
+              <div className={styles.meta}>
+                Available modules: {availableScans.map((s) => s.id).join(", ") || "(none)"}
+              </div>
+            </div>
+          </details>
 
           <div className={styles.row}>
             <label className={styles.checkbox}>
