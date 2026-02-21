@@ -72,6 +72,11 @@ def main(argv: list[str] | None = None) -> int:
     scope_check.add_argument("--allow-cidr", action="append", default=[], help="Allowed CIDR (repeatable)")
     scope_check.add_argument("--deny", action="append", default=[], help="Deny patterns (fnmatch), repeatable")
 
+    report = sub.add_parser("report", help="EASM: generate a report for a stored run")
+    report.add_argument("--run", type=int, required=True, help="Stored run id")
+    report.add_argument("--format", choices=["md", "html", "json"], default="md")
+    report.add_argument("--db", default=None, help="SQLite DB path (default: ~/.masat/masat.db)")
+
     serve = sub.add_parser("serve", help="Run the MASAT API server (requires extras: api)")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", default="8000")
@@ -255,6 +260,33 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
         parser.error("unknown scope subcommand")
+
+    if ns.cmd == "report":
+        from utils.history import default_db_path, get_run
+        from utils.report_templates import RunForReport, run_to_html, run_to_json, run_to_markdown
+
+        db_path = ns.db or default_db_path()
+        run = get_run(db_path, int(ns.run))
+        if not run:
+            print("Run not found")
+            return 1
+
+        r = RunForReport(
+            id=int(run["id"]),
+            ts=int(run["ts"]),
+            target=str(run["target"]),
+            scans=list(run.get("scans") or []),
+            results=dict(run.get("results") or {}),
+            findings=list(run.get("findings") or []),
+        )
+
+        if ns.format == "json":
+            print(run_to_json(r))
+        elif ns.format == "html":
+            print(run_to_html(r))
+        else:
+            print(run_to_markdown(r))
+        return 0
 
     if ns.cmd == "serve":
         # Avoid importing FastAPI at CLI import time.
