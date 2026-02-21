@@ -41,12 +41,18 @@ def default_assets_db_path() -> str:
 
 
 def _connect(db_path: str) -> sqlite3.Connection:
-    parent = os.path.dirname(os.path.abspath(db_path))
-    default_parent = os.path.dirname(os.path.abspath(default_assets_db_path()))
-    if parent and os.path.commonpath([parent, default_parent]) == default_parent:
-        os.makedirs(parent, exist_ok=True)
+    # Treat db_path as untrusted. Only auto-create the default MASAT directory.
+    default_dir = os.path.realpath(os.path.dirname(default_assets_db_path()))
+    resolved = os.path.realpath(db_path)
 
-    conn = sqlite3.connect(db_path)
+    if os.path.commonpath([resolved, default_dir]) == default_dir:
+        os.makedirs(default_dir, exist_ok=True)
+    else:
+        parent = os.path.dirname(resolved)
+        if not os.path.isdir(parent):
+            raise ValueError("Custom assets DB path directory must already exist")
+
+    conn = sqlite3.connect(resolved)
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS assets (
