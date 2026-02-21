@@ -68,7 +68,7 @@
 }
 
 .content {
-  padding: 22px 22px 60px;
+  padding: 20px 24px 60px;
 }
 
 .topbar {
@@ -85,9 +85,10 @@
 }
 
 .title {
-  font-size: 26px;
-  line-height: 1.15;
+  font-size: 24px;
+  line-height: 1.2;
   letter-spacing: -0.02em;
+  font-weight: 750;
 }
 
 .subtitle {
@@ -104,11 +105,11 @@
 }
 
 .pill {
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.03);
   padding: 6px 10px;
   border-radius: 999px;
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.72);
   font-size: 12px;
 }
 
@@ -178,8 +179,8 @@
 
 .input:focus,
 .select:focus {
-  border-color: rgba(255, 255, 255, 0.20);
-  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.14);
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 0 0 4px var(--ring);
 }
 
 .row {
@@ -231,9 +232,9 @@
 .tableWrap {
   width: 100%;
   overflow: auto;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .table {
@@ -244,17 +245,17 @@
 
 .table th,
 .table td {
-  padding: 12px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .table th {
-  font-size: 12px;
-  letter-spacing: 0.08em;
+  font-size: 11px;
+  letter-spacing: 0.10em;
   text-transform: uppercase;
-  color: var(--muted2);
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .table tr:hover td {
@@ -268,13 +269,12 @@
 }
 
 .actionLink {
-  text-decoration: underline;
-  text-decoration-color: rgba(255, 255, 255, 0.28);
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(255, 255, 255, 0.84);
+  text-decoration: none;
 }
 
 .actionLink:hover {
-  text-decoration-color: rgba(124, 58, 237, 0.85);
+  color: rgba(255, 255, 255, 0.96);
 }
 
 .badge {
