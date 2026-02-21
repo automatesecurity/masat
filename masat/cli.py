@@ -50,6 +50,28 @@ def main(argv: list[str] | None = None) -> int:
     diff.add_argument("--db", default=None, help="SQLite DB path (default: ~/.masat/masat.db)")
     diff.add_argument("--output", choices=["text", "json"], default="text")
 
+    assets = sub.add_parser("assets", help="EASM: manage local asset inventory")
+    assets_sub = assets.add_subparsers(dest="assets_cmd", required=True)
+
+    assets_import = assets_sub.add_parser("import", help="Import assets from CSV")
+    assets_import.add_argument("csv", help="Path to CSV (columns: asset/value, kind?, tags?, owner?, environment?)")
+    assets_import.add_argument("--db", default=None, help="Assets DB path (default: ~/.masat/assets.db)")
+    assets_import.add_argument("--owner", default="", help="Default owner if not present in CSV")
+    assets_import.add_argument("--environment", default="", help="Default environment if not present in CSV")
+
+    assets_list = assets_sub.add_parser("list", help="List assets")
+    assets_list.add_argument("--db", default=None, help="Assets DB path (default: ~/.masat/assets.db)")
+    assets_list.add_argument("--limit", type=int, default=200)
+
+    scope = sub.add_parser("scope", help="EASM: scope controls")
+    scope_sub = scope.add_subparsers(dest="scope_cmd", required=True)
+
+    scope_check = scope_sub.add_parser("check", help="Check if a target is in scope")
+    scope_check.add_argument("target", help="Target URL/domain/IP/CIDR")
+    scope_check.add_argument("--allow-domain", action="append", default=[], help="Allowed root domain (repeatable)")
+    scope_check.add_argument("--allow-cidr", action="append", default=[], help="Allowed CIDR (repeatable)")
+    scope_check.add_argument("--deny", action="append", default=[], help="Deny patterns (fnmatch), repeatable")
+
     serve = sub.add_parser("serve", help="Run the MASAT API server (requires extras: api)")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", default="8000")
@@ -177,6 +199,49 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  ... ({len(out.resolved_findings) - 50} more)")
 
         return 0
+
+    if ns.cmd == "assets":
+        from utils.assets import (
+            default_assets_db_path,
+            import_assets_csv,
+            list_assets,
+        )
+
+        db_path = ns.db or default_assets_db_path()
+
+        if ns.assets_cmd == "import":
+            n = import_assets_csv(db_path, ns.csv, default_owner=ns.owner, default_environment=ns.environment)
+            print(f"Imported {n} assets into: {db_path}")
+            return 0
+
+        if ns.assets_cmd == "list":
+            assets = list_assets(db_path, limit=ns.limit)
+            for a in assets:
+                tags = f" tags={','.join(a.tags)}" if a.tags else ""
+                owner = f" owner={a.owner}" if a.owner else ""
+                env = f" env={a.environment}" if a.environment else ""
+                print(f"{a.kind}:{a.value}{tags}{owner}{env}")
+            return 0
+
+        parser.error("unknown assets subcommand")
+
+    if ns.cmd == "scope":
+        from utils.assets import ScopeConfig, in_scope
+
+        if ns.scope_cmd == "check":
+            scope = ScopeConfig(
+                allow_domains=list(ns.allow_domain or []),
+                allow_cidrs=list(ns.allow_cidr or []),
+                deny_patterns=list(ns.deny or []),
+            )
+            allowed, reason = in_scope(ns.target, scope)
+            if allowed:
+                print(f"IN SCOPE: {reason}")
+                return 0
+            print(f"OUT OF SCOPE: {reason}")
+            return 2
+
+        parser.error("unknown scope subcommand")
 
     if ns.cmd == "serve":
         # Avoid importing FastAPI at CLI import time.
