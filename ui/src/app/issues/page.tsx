@@ -3,16 +3,9 @@ import Pagination from "@/app/_components/Pagination";
 import styles from "@/app/_components/appShell.module.css";
 import { fetchIssuesPage } from "@/lib/masatApi";
 import Link from "next/link";
+import IssuesTable from "./IssuesTable";
 
 export const dynamic = "force-dynamic";
-
-function severityLabel(sev: number) {
-  if (sev >= 9) return { label: "Critical", cls: styles.badgeHigh };
-  if (sev >= 7) return { label: "High", cls: styles.badgeHigh };
-  if (sev >= 4) return { label: "Medium", cls: styles.badgeMed };
-  if (sev >= 1) return { label: "Low", cls: styles.badgeLow };
-  return { label: "Info", cls: "" };
-}
 
 export default async function IssuesPage({
   searchParams,
@@ -92,61 +85,13 @@ export default async function IssuesPage({
           params={{ status, pageSize: String(pageSize) }}
         />
 
-        <div className={styles.tableWrap}>
-          <table className={styles.table} style={{ minWidth: 980 }}>
-            <thead>
-              <tr>
-                <th style={{ width: 110 }}>Severity</th>
-                <th>Title</th>
-                <th style={{ width: 220 }}>Asset</th>
-                <th style={{ width: 140 }}>Status</th>
-                <th style={{ width: 130 }}>Last run</th>
-              </tr>
-            </thead>
-            <tbody>
-              {issuesPage.items.map((i) => {
-                const sev = severityLabel(i.severity || 0);
-                return (
-                  <tr key={i.fingerprint}>
-                    <td>
-                      <span className={`${styles.badge} ${sev.cls}`}>{sev.label}</span>
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 900 }}>{i.title}</div>
-                      <div className={styles.meta}>{i.category}</div>
-                      {i.remediation ? (
-                        <div className={styles.meta}>
-                          <strong>Remediation:</strong> {i.remediation}
-                        </div>
-                      ) : null}
-                    </td>
-                    <td>
-                      <Link className={styles.actionLink} href={`/assets/${encodeURIComponent(i.asset)}`}>
-                        {i.asset}
-                      </Link>
-                      {i.environment ? <div className={styles.meta}>{i.environment}</div> : null}
-                      {i.owner ? <div className={styles.meta}>{i.owner}</div> : null}
-                    </td>
-                    <td className={styles.meta}>{i.status}</td>
-                    <td>
-                      <Link className={styles.actionLink} href={`/runs/${i.last_run_id}`}>
-                        #{i.last_run_id}
-                      </Link>
-                      <div className={styles.meta}>{new Date(i.last_seen_ts * 1000).toLocaleString()}</div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {issuesPage.items.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className={styles.meta}>
-                    No issues yet. Run a scan, store it, then refresh.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+        <IssuesTable items={issuesPage.items} />
+
+        {issuesPage.items.length === 0 ? (
+          <div className={styles.meta} style={{ marginTop: 10 }}>
+            No issues yet. Run a scan, store it, then refresh.
+          </div>
+        ) : null}
       </section>
     </AppShell>
   );

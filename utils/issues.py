@@ -75,7 +75,58 @@ def _connect(db_path: str) -> sqlite3.Connection:
     return conn
 
 
+def get_issue(db_path: str, fingerprint: str) -> Issue | None:
+    conn = _connect(db_path)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT fingerprint, asset, category, title, severity, status, owner, environment,
+                   first_seen_ts, last_seen_ts, last_run_id, remediation, details
+            FROM issues
+            WHERE fingerprint=?
+            """,
+            (fingerprint,),
+        )
+        r = cur.fetchone()
+        if not r:
+            return None
+        return Issue(
+            fingerprint=str(r[0]),
+            asset=str(r[1]),
+            category=str(r[2]),
+            title=str(r[3]),
+            severity=int(r[4] or 0),
+            status=str(r[5] or "open"),
+            owner=str(r[6] or ""),
+            environment=str(r[7] or ""),
+            first_seen_ts=int(r[8] or 0),
+            last_seen_ts=int(r[9] or 0),
+            last_run_id=int(r[10] or 0),
+            remediation=str(r[11] or ""),
+            details=str(r[12] or ""),
+        )
+    finally:
+        conn.close()
+
+
 def upsert_issue(db_path: str, issue: Issue) -> None:
+    """Upsert issue while preserving triage fields.
+
+    Preserves:
+    - status
+    - owner
+    - environment
+    - first_seen_ts
+    """
+
+    existing = get_issue(db_path, issue.fingerprint)
+
+    first_seen_ts = existing.first_seen_ts if existing else issue.first_seen_ts
+    status = existing.status if existing else issue.status
+    owner = existing.owner if existing and existing.owner else issue.owner
+    environment = existing.environment if existing and existing.environment else issue.environment
+
     conn = _connect(db_path)
     try:
         cur = conn.cursor()
@@ -98,10 +149,10 @@ def upsert_issue(db_path: str, issue: Issue) -> None:
                 issue.category,
                 issue.title,
                 int(issue.severity),
-                issue.status,
-                issue.owner,
-                issue.environment,
-                int(issue.first_seen_ts),
+                status,
+                owner,
+                environment,
+                int(first_seen_ts),
                 int(issue.last_seen_ts),
                 int(issue.last_run_id),
                 issue.remediation,
