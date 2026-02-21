@@ -62,15 +62,39 @@ make test
 
 ## Usage
 
-### EASM: Expand a domain into assets
+### EASM quickstart (recommended flow)
+1) **Expand** a root domain into concrete assets (safe-by-default):
 ```bash
-masat expand example.com --output json
+masat expand example.com --output json > assets.json
 ```
 
 Safe defaults:
 - CT expansion enabled (crt.sh)
 - DNS resolution enabled
 - Hard limits (`--max-hosts`, `--max-dns-lookups`)
+
+2) **Plan** (dry-run) a smart scan for a target:
+```bash
+masat plan https://example.com
+```
+
+3) **Scan + store** results to local history:
+```bash
+masat scan https://example.com --smart --store --output json > run.json
+```
+
+4) **Diff** what changed between the last two stored runs for a target:
+```bash
+masat diff https://example.com
+```
+
+5) **Browse** results in the UI:
+```bash
+pip install -e ".[api]"
+masat serve --reload
+# in another terminal:
+cd ui && npm install && npm run dev
+```
 
 ### List available scans
 ```bash
