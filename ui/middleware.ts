@@ -23,8 +23,9 @@ export function middleware(req: NextRequest) {
     }
 
     if (path === "/assets") {
-      // Assets page currently supports search via q; set q=owner as a weak default, or better: add owner filter later.
-      // We'll keep it minimal and not override; leave for a follow-up.
+      if (!url.searchParams.get("owner")) {
+        return NextResponse.redirect(withParams(url, { owner }));
+      }
     }
 
     if (path === "/") {

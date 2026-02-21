@@ -147,11 +147,22 @@ export async function fetchRunsPage(params?: { limit?: number; offset?: number }
   };
 }
 
-export async function fetchAssetsPage(params?: { limit?: number; offset?: number }): Promise<Page<AssetRow>> {
+export async function fetchAssetsPage(params?: {
+  limit?: number;
+  offset?: number;
+  env?: string;
+  owned?: boolean;
+  owner?: string;
+}): Promise<Page<AssetRow>> {
   const limit = params?.limit ?? 30;
   const offset = params?.offset ?? 0;
 
-  const res = await fetch(`${baseUrl()}/assets?limit=${limit}&offset=${offset}`, { cache: "no-store" });
+  const sp = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (params?.env) sp.set("env", params.env);
+  if (params?.owned !== undefined) sp.set("owned", params.owned ? "1" : "0");
+  if (params?.owner) sp.set("owner", params.owner);
+
+  const res = await fetch(`${baseUrl()}/assets?${sp.toString()}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`MASAT /assets failed: ${res.status}`);
   const data = await res.json();
   return {

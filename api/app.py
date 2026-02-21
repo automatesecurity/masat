@@ -461,12 +461,30 @@ def run_detail(run_id: int) -> dict[str, Any]:
 
 
 @app.get("/assets")
-def assets(limit: int = 30, offset: int = 0) -> dict[str, Any]:
+def assets(
+    limit: int = 30,
+    offset: int = 0,
+    env: str | None = None,
+    owned: int | None = None,
+    owner: str | None = None,
+) -> dict[str, Any]:
     db_path = default_assets_db_path()
     lim = max(1, min(500, int(limit)))
     off = max(0, int(offset))
-    rows = [a.to_dict() for a in list_assets(db_path, limit=lim, offset=off)]
-    return {"assets": rows, "total": count_assets(db_path), "limit": lim, "offset": off}
+
+    rows_all = [a.to_dict() for a in list_assets(db_path, limit=5000, offset=0)]
+
+    owned_bool = True if owned == 1 else False if owned == 0 else None
+    rows = _asset_filter_rows(rows_all, env=env, owned=owned_bool)
+
+    if owner:
+        o = owner.strip().lower()
+        rows = [r for r in rows if str(r.get("owner") or "").strip().lower() == o]
+
+    total = len(rows)
+    page = rows[off : off + lim]
+
+    return {"assets": page, "total": total, "limit": lim, "offset": off}
 
 
 @app.get("/exposure/ports")
