@@ -35,6 +35,15 @@ def main(argv: list[str] | None = None) -> int:
 
     list_scans = sub.add_parser("list-scans", help="List available scan modules")
 
+    expand = sub.add_parser("expand", help="EASM: expand a domain into concrete assets")
+    expand.add_argument("domain", help="Root domain to expand (e.g., example.com)")
+    expand.add_argument("--no-ct", action="store_true", help="Disable Certificate Transparency (crt.sh) expansion")
+    expand.add_argument("--no-resolve", action="store_true", help="Do not resolve hostnames to IPs")
+    expand.add_argument("--max-hosts", type=int, default=500, help="Max hostnames to emit (safety limit)")
+    expand.add_argument("--max-dns-lookups", type=int, default=2000, help="Max DNS lookups (safety limit)")
+    expand.add_argument("--dns-concurrency", type=int, default=50, help="Max concurrent DNS resolutions")
+    expand.add_argument("--output", choices=["text", "json", "csv"], default="text")
+
     serve = sub.add_parser("serve", help="Run the MASAT API server (requires extras: api)")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", default="8000")
@@ -71,6 +80,42 @@ def main(argv: list[str] | None = None) -> int:
             passthrough += ["--output-file", ns.output_file]
 
         return _run_scanner_passthrough(passthrough)
+
+    if ns.cmd == "expand":
+        import asyncio
+        import json
+
+        from utils.expand import expand_domain
+
+        assets = asyncio.run(
+            expand_domain(
+                ns.domain,
+                use_crtsh=not ns.no_ct,
+                resolve=not ns.no_resolve,
+                max_hosts=ns.max_hosts,
+                max_dns_lookups=ns.max_dns_lookups,
+                dns_concurrency=ns.dns_concurrency,
+            )
+        )
+
+        if ns.output == "json":
+            print(json.dumps({"domain": ns.domain, "assets": [a.to_dict() for a in assets]}, indent=2, sort_keys=True))
+            return 0
+
+        if ns.output == "csv":
+            # Simple CSV: hostname, ips, source
+            print("hostname,ips,source")
+            for a in assets:
+                ips = " ".join(a.ips)
+                # naive CSV escaping is ok for these fields
+                print(f"{a.hostname},{ips},{a.source}")
+            return 0
+
+        # text
+        for a in assets:
+            ip_part = f" -> {', '.join(a.ips)}" if a.ips else ""
+            print(f"{a.hostname}{ip_part} ({a.source})")
+        return 0
 
     if ns.cmd == "serve":
         # Avoid importing FastAPI at CLI import time.
