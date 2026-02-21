@@ -159,6 +159,11 @@ class DashboardMetrics:
     total_assets: int
     assets_by_env: dict[str, int]
 
+    # attribution / ownership
+    owned_assets: int
+    assets_with_owner: int
+    owner_coverage_pct: int
+
     # run activity
     total_runs: int
     runs_24h: int
@@ -167,8 +172,12 @@ class DashboardMetrics:
 
     # coverage
     targets_seen: int
+    assets_scanned_7d: int
+    coverage_7d_pct: int
     assets_scanned_30d: int
     coverage_30d_pct: int
+    assets_never_scanned: int
+    stale_assets_30d: int
 
     # risk/exposure
     findings_by_sev: dict[str, int]
@@ -197,15 +206,25 @@ def build_dashboard_metrics(
 
     # Inventory
     assets_by_env: dict[str, int] = {}
+    owned_assets = 0
+    assets_with_owner = 0
+
     for a in assets:
         env = str(a.get("environment") or "").strip() or "unspecified"
         assets_by_env[env] = assets_by_env.get(env, 0) + 1
+
+        tags = [str(t).strip().lower() for t in (a.get("tags") or []) if str(t).strip()]
+        if "owned" in tags or "in-scope" in tags:
+            owned_assets += 1
+
+        if str(a.get("owner") or "").strip():
+            assets_with_owner += 1
 
     # Coverage: compare asset hostnames with latest run targets
     asset_hosts = {
         str(a.get("value") or "").strip().lower().rstrip(".")
         for a in assets
-        if str(a.get("kind") or "") in {"host", "url"} or True
+        if str(a.get("value") or "").strip()
     }
 
     latest_run_ts = None
@@ -214,7 +233,10 @@ def build_dashboard_metrics(
     findings_by_sev: dict[str, int] = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
     open_ports_total = 0
 
+    scanned_any: set[str] = set()
+    scanned_7d: set[str] = set()
     scanned_30d: set[str] = set()
+    cutoff_7d = now - 7 * 24 * 3600
     cutoff_30d = now - 30 * 24 * 3600
 
     for r in latest_runs:
@@ -224,7 +246,11 @@ def build_dashboard_metrics(
             latest_run_ts = rts
 
         host = _extract_host(str(r.get("target") or ""))
-        if rts >= cutoff_30d and host:
+        if host:
+            scanned_any.add(host)
+        if host and rts >= cutoff_7d:
+            scanned_7d.add(host)
+        if host and rts >= cutoff_30d:
             scanned_30d.add(host)
 
         rid = int(r.get("id") or 0)
@@ -241,14 +267,19 @@ def build_dashboard_metrics(
         if isinstance(results, dict):
             open_ports_total += _count_open_ports(results)
 
-    # only count assets we can match by hostname
-    assets_scanned_30d = 0
-    for h in scanned_30d:
-        if h in asset_hosts:
-            assets_scanned_30d += 1
+    def intersect_count(scanned: set[str]) -> int:
+        return sum(1 for h in scanned if h in asset_hosts)
+
+    assets_scanned_7d = intersect_count(scanned_7d)
+    assets_scanned_30d = intersect_count(scanned_30d)
 
     total_assets = len(assets)
+    coverage_7d_pct = int(round((assets_scanned_7d / total_assets) * 100)) if total_assets else 0
     coverage_30d_pct = int(round((assets_scanned_30d / total_assets) * 100)) if total_assets else 0
+
+    scanned_any_count = sum(1 for h in scanned_any if h in asset_hosts)
+    assets_never_scanned = max(0, total_assets - scanned_any_count)
+    stale_assets_30d = max(0, total_assets - assets_scanned_30d)
 
     # Category scores (0-100)
     score_vuln = _score_from_buckets(findings_by_sev)
@@ -273,17 +304,26 @@ def build_dashboard_metrics(
         }
     )
 
+    owner_coverage_pct = int(round((assets_with_owner / total_assets) * 100)) if total_assets else 0
+
     return DashboardMetrics(
         ts=now,
         total_assets=total_assets,
         assets_by_env=dict(sorted(assets_by_env.items(), key=lambda x: (-x[1], x[0]))),
+        owned_assets=int(owned_assets),
+        assets_with_owner=int(assets_with_owner),
+        owner_coverage_pct=int(owner_coverage_pct),
         total_runs=int(total_runs),
         runs_24h=int(runs_24h),
         runs_7d=int(runs_7d),
         latest_run_ts=latest_run_ts,
         targets_seen=targets_seen,
-        assets_scanned_30d=assets_scanned_30d,
-        coverage_30d_pct=coverage_30d_pct,
+        assets_scanned_7d=int(assets_scanned_7d),
+        coverage_7d_pct=int(coverage_7d_pct),
+        assets_scanned_30d=int(assets_scanned_30d),
+        coverage_30d_pct=int(coverage_30d_pct),
+        assets_never_scanned=int(assets_never_scanned),
+        stale_assets_30d=int(stale_assets_30d),
         findings_by_sev=findings_by_sev,
         open_ports_total=int(open_ports_total),
         score=int(score),
