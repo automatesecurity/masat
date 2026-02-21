@@ -28,7 +28,8 @@ from scanners.registry import discover_scanners
 from utils.targets import parse_target
 from utils.workflows import plan_scans
 from utils.schema import normalize_findings
-from utils.history import default_db_path, store_run, list_runs
+from utils.history import default_db_path, store_run, list_runs, get_run
+from utils.assets import default_assets_db_path, list_assets
 
 
 app = FastAPI(title="MASAT API", version="0.1")
@@ -105,3 +106,19 @@ async def scan(req: ScanRequest) -> dict[str, Any]:
 def runs(limit: int = 20, db: str | None = None) -> dict[str, Any]:
     db_path = db or default_db_path()
     return {"runs": list_runs(db_path, limit=limit)}
+
+
+@app.get("/runs/{run_id}")
+def run_detail(run_id: int, db: str | None = None) -> dict[str, Any]:
+    db_path = db or default_db_path()
+    run = get_run(db_path, run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    return {"run": run}
+
+
+@app.get("/assets")
+def assets(limit: int = 200, db: str | None = None) -> dict[str, Any]:
+    db_path = db or default_assets_db_path()
+    rows = [a.to_dict() for a in list_assets(db_path, limit=limit)]
+    return {"assets": rows}
