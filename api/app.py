@@ -150,8 +150,64 @@ def run_report(run_id: int, format: str = "md") -> dict[str, Any] | str:
     )
 
     if format == "json":
-        return PlainTextResponse(run_to_json(r), media_type="application/json")
+        return PlainTextResponse(
+            run_to_json(r),
+            media_type="application/json",
+            headers={"content-disposition": f"attachment; filename=masat-run-{run_id}.json"},
+        )
     if format == "html":
-        return HTMLResponse(run_to_html(r))
+        return HTMLResponse(
+            run_to_html(r),
+            headers={"content-disposition": f"attachment; filename=masat-run-{run_id}.html"},
+        )
 
-    return PlainTextResponse(run_to_markdown(r), media_type="text/markdown")
+    return PlainTextResponse(
+        run_to_markdown(r),
+        media_type="text/markdown",
+        headers={"content-disposition": f"attachment; filename=masat-run-{run_id}.md"},
+    )
+
+
+@app.get("/diff")
+def diff(target: str, last: int = 2, format: str = "json"):
+    """Diff last N stored runs for a target.
+
+    format: json|md
+    """
+
+    from utils.diffing import DiffResult, diff_exposure, diff_findings
+    from utils.diff_report import diff_to_json, diff_to_markdown
+    from utils.history import list_runs_for_target
+
+    db_path = default_db_path()
+    runs = list_runs_for_target(db_path, target, limit=max(2, int(last)))
+    if len(runs) < 2:
+        raise HTTPException(status_code=400, detail="Not enough stored runs to diff")
+
+    new_run = get_run(db_path, int(runs[0]["id"]))
+    old_run = get_run(db_path, int(runs[1]["id"]))
+    if not new_run or not old_run:
+        raise HTTPException(status_code=500, detail="Unable to load runs")
+
+    added, resolved = diff_findings(old_run.get("findings", []), new_run.get("findings", []))
+    exposure = diff_exposure(old_run.get("results", {}) or {}, new_run.get("results", {}) or {})
+
+    out = DiffResult(
+        target=target,
+        old_run_id=int(old_run["id"]),
+        new_run_id=int(new_run["id"]),
+        new_findings=added,
+        resolved_findings=resolved,
+        exposure=exposure,
+    )
+
+    from fastapi.responses import PlainTextResponse
+
+    if format == "md":
+        return PlainTextResponse(
+            diff_to_markdown(out),
+            media_type="text/markdown",
+            headers={"content-disposition": f"attachment; filename=masat-diff-{out.old_run_id}-{out.new_run_id}.md"},
+        )
+
+    return PlainTextResponse(diff_to_json(out), media_type="application/json")

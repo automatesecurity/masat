@@ -49,6 +49,7 @@ def main(argv: list[str] | None = None) -> int:
     diff.add_argument("--last", type=int, default=2, help="How many recent runs to diff (default: 2)")
     diff.add_argument("--db", default=None, help="SQLite DB path (default: ~/.masat/masat.db)")
     diff.add_argument("--output", choices=["text", "json"], default="text")
+    diff.add_argument("--report", choices=["md", "json"], default=None, help="Generate a shareable diff report")
 
     assets = sub.add_parser("assets", help="EASM: manage local asset inventory")
     assets_sub = assets.add_subparsers(dest="assets_cmd", required=True)
@@ -76,6 +77,12 @@ def main(argv: list[str] | None = None) -> int:
     report.add_argument("--run", type=int, required=True, help="Stored run id")
     report.add_argument("--format", choices=["md", "html", "json"], default="md")
     report.add_argument("--db", default=None, help="SQLite DB path (default: ~/.masat/masat.db)")
+
+    notify = sub.add_parser("notify", help="EASM: notify on meaningful change (reads last 2 stored runs)")
+    notify.add_argument("target", help="Target to evaluate")
+    notify.add_argument("--db", default=None, help="SQLite DB path (default: ~/.masat/masat.db)")
+    notify.add_argument("--slack-webhook", default=os.getenv("SLACK_WEBHOOK_URL"), help="Slack webhook URL")
+    notify.add_argument("--high-sev", type=int, default=8, help="Severity threshold for new findings")
 
     serve = sub.add_parser("serve", help="Run the MASAT API server (requires extras: api)")
     serve.add_argument("--host", default="127.0.0.1")
@@ -182,6 +189,15 @@ def main(argv: list[str] | None = None) -> int:
             exposure=exposure,
         )
 
+        if ns.report:
+            from utils.diff_report import diff_to_json, diff_to_markdown
+
+            if ns.report == "json":
+                print(diff_to_json(out))
+            else:
+                print(diff_to_markdown(out))
+            return 0
+
         if ns.output == "json":
             print(json.dumps(out.to_dict(), indent=2, sort_keys=True))
             return 0
@@ -286,6 +302,52 @@ def main(argv: list[str] | None = None) -> int:
             print(run_to_html(r))
         else:
             print(run_to_markdown(r))
+        return 0
+
+    if ns.cmd == "notify":
+        import asyncio
+
+        from utils.diffing import diff_exposure, diff_findings
+        from utils.history import default_db_path, get_run, list_runs_for_target
+        from utils.notify import format_slack_message, should_notify
+        from utils.slack_integration import send_slack_notification
+
+        if not ns.slack_webhook:
+            print("No Slack webhook configured (set --slack-webhook or SLACK_WEBHOOK_URL)")
+            return 2
+
+        db_path = ns.db or default_db_path()
+        runs = list_runs_for_target(db_path, ns.target, limit=2)
+        if len(runs) < 2:
+            print("Not enough stored runs to evaluate changes")
+            return 1
+
+        new_run = get_run(db_path, int(runs[0]["id"]))
+        old_run = get_run(db_path, int(runs[1]["id"]))
+        if not new_run or not old_run:
+            print("Unable to load runs")
+            return 1
+
+        added, resolved = diff_findings(old_run.get("findings", []), new_run.get("findings", []))
+        exposure = diff_exposure(old_run.get("results", {}) or {}, new_run.get("results", {}) or {})
+
+        diff = {
+            "target": ns.target,
+            "old_run_id": int(old_run["id"]),
+            "new_run_id": int(new_run["id"]),
+            "new_findings": added,
+            "resolved_findings": resolved,
+            "exposure": exposure,
+        }
+
+        decision = should_notify(diff, high_sev_threshold=int(ns.high_sev))
+        if not decision.should_notify:
+            print("No meaningful changes; no notification sent")
+            return 0
+
+        msg = format_slack_message(diff, decision)
+        asyncio.run(send_slack_notification(ns.slack_webhook, msg, verbose=False))
+        print("Notification sent")
         return 0
 
     if ns.cmd == "serve":
