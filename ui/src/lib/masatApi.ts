@@ -248,14 +248,15 @@ export async function fetchIssuesPage(params?: {
 }
 
 export async function updateIssue(params: { fingerprint: string; status?: string; owner?: string }): Promise<void> {
-  const res = await fetch(`${baseUrl()}/issues/update`, {
+  // This is used from client components; go through the Next.js API proxy to avoid CORS / mixed-origin issues.
+  const res = await fetch(`/api/issues/update`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(params),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`MASAT /issues/update failed: ${res.status} ${text}`);
+    throw new Error(`MASAT UI /api/issues/update failed: ${res.status} ${text}`);
   }
 }
 
