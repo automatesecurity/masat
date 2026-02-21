@@ -1,7 +1,7 @@
 import AppShell from "@/app/_components/AppShell";
 import styles from "@/app/_components/appShell.module.css";
 import Pagination from "@/app/_components/Pagination";
-import { fetchAssetsPage, type AssetRow } from "@/lib/masatApi";
+import { fetchAssetsExposedPage, fetchAssetsPage, type AssetRow } from "@/lib/masatApi";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +30,7 @@ export default async function AssetsPage({
   const sp = (await searchParams) || {};
   const q = typeof sp.q === "string" ? sp.q : "";
   const view = typeof sp.view === "string" ? sp.view : "";
+  const port = typeof sp.port === "string" ? sp.port : "";
 
   const pageRaw = typeof sp.page === "string" ? sp.page : "1";
   const pageSizeRaw = typeof sp.pageSize === "string" ? sp.pageSize : "30";
@@ -37,12 +38,19 @@ export default async function AssetsPage({
   const page = Math.max(1, Number(pageRaw) || 1);
   const offset = (page - 1) * pageSize;
 
-  const assetsPage = await fetchAssetsPage({ limit: pageSize, offset }).catch(() => ({
-    items: [],
-    total: 0,
-    limit: pageSize,
-    offset,
-  }));
+  const assetsPage = port
+    ? await fetchAssetsExposedPage({ port, limit: pageSize, offset }).catch(() => ({
+        items: [],
+        total: 0,
+        limit: pageSize,
+        offset,
+      }))
+    : await fetchAssetsPage({ limit: pageSize, offset }).catch(() => ({
+        items: [],
+        total: 0,
+        limit: pageSize,
+        offset,
+      }));
 
   const assets = assetsPage.items;
 
@@ -68,6 +76,7 @@ export default async function AssetsPage({
           <span className={styles.pill}>Total: {assetsPage.total}</span>
           <span className={styles.pill}>Loaded: {assets.length}</span>
           <span className={styles.pill}>Filtered: {filtered.length}</span>
+          {port ? <span className={styles.pill}>Port: {port}</span> : null}
           <span className={styles.pill}>Tags: {allTags.length}</span>
           <span className={styles.pill}>Envs: {allEnvs.length}</span>
         </>
@@ -101,11 +110,17 @@ export default async function AssetsPage({
         <form className={styles.row} method="GET">
           <input className={styles.input} name="q" placeholder="Search..." defaultValue={q} />
           {view ? <input type="hidden" name="view" value={view} /> : null}
+          {port ? <input type="hidden" name="port" value={port} /> : null}
           <input type="hidden" name="page" value="1" />
           <input type="hidden" name="pageSize" value={String(pageSize)} />
           <button className={styles.buttonSecondary} type="submit">
             Apply
           </button>
+          {port ? (
+            <Link className={styles.actionLink} href="/assets">
+              Clear port filter
+            </Link>
+          ) : null}
         </form>
       </section>
 
@@ -120,7 +135,7 @@ export default async function AssetsPage({
           page={page}
           pageSize={pageSize}
           total={assetsPage.total}
-          params={{ q, view, pageSize: String(pageSize) }}
+          params={{ q, view, port, pageSize: String(pageSize) }}
         />
 
         <div className={styles.tableWrap}>
