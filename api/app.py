@@ -45,6 +45,16 @@ from utils.assets import default_assets_db_path, list_assets, count_assets, upse
 from utils.dashboard import build_dashboard_metrics
 from utils.exposure import extract_open_ports_from_results
 from utils.ports_summary import summarize_open_ports_by_asset
+from utils.issues import (
+    Issue,
+    default_issues_db_path,
+    fingerprint_issue,
+    list_issues,
+    count_issues,
+    upsert_issue,
+    update_issue_status,
+    now_ts,
+)
 
 
 app = FastAPI(title="MASAT API", version="0.1")
@@ -93,6 +103,12 @@ class AssetsImportRequest(BaseModel):
     environment: str = ""
 
 
+class IssueUpdateRequest(BaseModel):
+    fingerprint: str
+    status: str | None = None
+    owner: str | None = None
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -128,6 +144,12 @@ def dashboard() -> dict[str, Any]:
             d = get_run(runs_db, rid)
             if d:
                 run_details_by_id[rid] = d
+
+    # Keep issues table in sync with the latest evidence.
+    try:
+        _sync_issues_from_latest_runs(assets_rows=assets_rows, latest_runs=latest_runs, run_details_by_id=run_details_by_id)
+    except Exception:
+        pass
 
     metrics = build_dashboard_metrics(
         assets=assets_rows,
@@ -196,6 +218,74 @@ def dashboard() -> dict[str, Any]:
     }
 
 
+def _sync_issues_from_latest_runs(
+    *,
+    assets_rows: list[dict[str, Any]],
+    latest_runs: list[dict[str, Any]],
+    run_details_by_id: dict[int, dict[str, Any]],
+) -> None:
+    """Upsert issues for the current evidence window.
+
+    This is intentionally best-effort and only covers normalized findings.
+    """
+
+    assets_by_value = {str(a.get("value") or "").strip().lower(): a for a in (assets_rows or [])}
+
+    issues_db = default_issues_db_path()
+    now = now_ts()
+
+    for r in latest_runs or []:
+        rid = int(r.get("id") or 0)
+        target = str(r.get("target") or "")
+        detail = run_details_by_id.get(rid) or {}
+        findings = detail.get("findings") or []
+        if not isinstance(findings, list):
+            continue
+
+        # Map to an asset hostname if possible.
+        host = parse_target(target).host or target
+        key = host.strip().lower()
+        asset_meta = assets_by_value.get(key) or {}
+
+        owner = str(asset_meta.get("owner") or "")
+        env = str(asset_meta.get("environment") or "")
+
+        for f in findings:
+            if not isinstance(f, dict):
+                continue
+            category = str(f.get("category") or "")
+            title = str(f.get("title") or "")
+            sev = int(f.get("severity") or 0)
+            remediation = str(f.get("remediation") or "")
+            details = str(f.get("details") or "")
+
+            if not title:
+                continue
+
+            fp = fingerprint_issue(key, category, title)
+
+            # Determine first_seen if exists
+            # (read existing row is expensive; we keep it simple: first_seen=now for now)
+            # Future: add get_issue() and preserve first_seen.
+            issue = Issue(
+                fingerprint=fp,
+                asset=key,
+                category=category,
+                title=title,
+                severity=sev,
+                status="open",
+                owner=owner,
+                environment=env,
+                first_seen_ts=now,
+                last_seen_ts=now,
+                last_run_id=rid,
+                remediation=remediation,
+                details=details,
+            )
+
+            upsert_issue(issues_db, issue)
+
+
 @app.get("/scans")
 def scans() -> dict[str, Any]:
     reg = discover_scanners()
@@ -222,6 +312,29 @@ async def seed(req: SeedRequest) -> dict[str, Any]:
         "domain": domain,
         "assets": [a.to_dict() for a in assets],
     }
+
+
+@app.get("/issues")
+def issues(limit: int = 30, offset: int = 0, status: str | None = None) -> dict[str, Any]:
+    db_path = default_issues_db_path()
+    lim = max(1, min(200, int(limit)))
+    off = max(0, int(offset))
+
+    rows = [i.to_dict() for i in list_issues(db_path, limit=lim, offset=off, status=status)]
+    total = count_issues(db_path, status=status)
+    return {"issues": rows, "total": total, "limit": lim, "offset": off}
+
+
+@app.post("/issues/update")
+def issue_update(req: IssueUpdateRequest) -> dict[str, Any]:
+    if not req.fingerprint:
+        raise HTTPException(status_code=400, detail="Missing fingerprint")
+
+    if req.status is None and req.owner is None:
+        raise HTTPException(status_code=400, detail="Provide status and/or owner")
+
+    update_issue_status(default_issues_db_path(), req.fingerprint, status=req.status, owner=req.owner)
+    return {"ok": True}
 
 
 @app.post("/assets/import")

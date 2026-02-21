@@ -71,8 +71,41 @@ export type DashboardResponse = {
   narrative: string[];
 };
 
+export type Page<T> = { items: T[]; total: number; limit: number; offset: number };
+
+export type AssetDetail = {
+  asset: AssetRow | null;
+  latestRun: RunRow | null;
+  runDetail: RunDetail | null;
+  openPorts: { port: string; service: string; version: string }[];
+};
+
+export type ExposedPort = { port: string; assets: number };
+
+export type IssueRow = {
+  fingerprint: string;
+  asset: string;
+  category: string;
+  title: string;
+  severity: number;
+  status: string;
+  owner: string;
+  environment: string;
+  first_seen_ts: number;
+  last_seen_ts: number;
+  last_run_id: number;
+  remediation: string;
+  details: string;
+};
+
 function baseUrl() {
   return process.env.NEXT_PUBLIC_MASAT_API_BASE || "http://127.0.0.1:8000";
+}
+
+export async function fetchDashboard(): Promise<DashboardResponse> {
+  const res = await fetch(`${baseUrl()}/dashboard`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`MASAT /dashboard failed: ${res.status}`);
+  return (await res.json()) as DashboardResponse;
 }
 
 export async function fetchScans(): Promise<Scan[]> {
@@ -81,8 +114,6 @@ export async function fetchScans(): Promise<Scan[]> {
   const data = await res.json();
   return data.scans || [];
 }
-
-export type Page<T> = { items: T[]; total: number; limit: number; offset: number };
 
 export async function fetchRunsPage(params?: { limit?: number; offset?: number }): Promise<Page<RunRow>> {
   const limit = params?.limit ?? 30;
@@ -130,21 +161,6 @@ export async function fetchRun(id: number): Promise<RunDetail> {
   return data.run as RunDetail;
 }
 
-export async function fetchDashboard(): Promise<DashboardResponse> {
-  const res = await fetch(`${baseUrl()}/dashboard`, { cache: "no-store" });
-  if (!res.ok) throw new Error(`MASAT /dashboard failed: ${res.status}`);
-  return (await res.json()) as DashboardResponse;
-}
-
-export type AssetDetail = {
-  asset: AssetRow | null;
-  latestRun: RunRow | null;
-  runDetail: RunDetail | null;
-  openPorts: { port: string; service: string; version: string }[];
-};
-
-export type ExposedPort = { port: string; assets: number };
-
 export async function fetchAssetDetail(value: string): Promise<AssetDetail> {
   const res = await fetch(`${baseUrl()}/asset?value=${encodeURIComponent(value)}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`MASAT /asset failed: ${res.status}`);
@@ -178,6 +194,38 @@ export async function fetchAssetsExposedPage(params: {
     limit: Number(data.limit || limit),
     offset: Number(data.offset || offset),
   };
+}
+
+export async function fetchIssuesPage(params?: {
+  limit?: number;
+  offset?: number;
+  status?: string;
+}): Promise<Page<IssueRow>> {
+  const limit = params?.limit ?? 30;
+  const offset = params?.offset ?? 0;
+  const status = params?.status ? `&status=${encodeURIComponent(params.status)}` : "";
+
+  const res = await fetch(`${baseUrl()}/issues?limit=${limit}&offset=${offset}${status}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`MASAT /issues failed: ${res.status}`);
+  const data = await res.json();
+  return {
+    items: data.issues || [],
+    total: Number(data.total || 0),
+    limit: Number(data.limit || limit),
+    offset: Number(data.offset || offset),
+  };
+}
+
+export async function updateIssue(params: { fingerprint: string; status?: string; owner?: string }): Promise<void> {
+  const res = await fetch(`${baseUrl()}/issues/update`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`MASAT /issues/update failed: ${res.status} ${text}`);
+  }
 }
 
 export async function runScan(params: {
