@@ -106,6 +106,9 @@ export type IssueRow = {
   first_seen_ts: number;
   last_seen_ts: number;
   last_run_id: number;
+  status_updated_ts?: number;
+  resolved_ts?: number;
+  reopened_count?: number;
   remediation: string;
   details: string;
 };

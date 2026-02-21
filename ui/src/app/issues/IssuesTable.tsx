@@ -48,7 +48,7 @@ export default function IssuesTable({ items }: { items: IssueRow[] }) {
 
   return (
     <div className={styles.tableWrap}>
-      <table className={styles.table} style={{ minWidth: 1100 }}>
+      <table className={styles.table} style={{ minWidth: 1200 }}>
         <thead>
           <tr>
             <th style={{ width: 110 }}>Severity</th>
@@ -56,7 +56,8 @@ export default function IssuesTable({ items }: { items: IssueRow[] }) {
             <th style={{ width: 240 }}>Asset</th>
             <th style={{ width: 170 }}>Status</th>
             <th style={{ width: 200 }}>Owner</th>
-            <th style={{ width: 130 }}>Last run</th>
+            <th style={{ width: 160 }}>Age</th>
+            <th style={{ width: 160 }}>Last seen</th>
           </tr>
         </thead>
         <tbody>
@@ -117,17 +118,25 @@ export default function IssuesTable({ items }: { items: IssueRow[] }) {
                   {isPending ? <div className={styles.meta}>Saving…</div> : null}
                 </td>
                 <td>
+                  <div style={{ fontWeight: 700 }}>{Math.max(0, Math.floor((Date.now() / 1000 - (i.first_seen_ts || 0)) / 86400))}d</div>
+                  <div className={styles.meta}>
+                    Since {new Date((i.first_seen_ts || 0) * 1000).toLocaleDateString()}
+                  </div>
+                  {i.reopened_count ? <div className={styles.meta}>Reopened: {i.reopened_count}</div> : null}
+                </td>
+                <td>
                   <Link className={styles.actionLink} href={`/runs/${i.last_run_id}`}>
                     #{i.last_run_id}
                   </Link>
-                  <div className={styles.meta}>{new Date(i.last_seen_ts * 1000).toLocaleString()}</div>
+                  <div className={styles.meta}>{new Date((i.last_seen_ts || 0) * 1000).toLocaleString()}</div>
+                  {i.status_updated_ts ? <div className={styles.meta}>Status updated {new Date(i.status_updated_ts * 1000).toLocaleDateString()}</div> : null}
                 </td>
               </tr>
             );
           })}
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={6} className={styles.meta}>
+              <td colSpan={7} className={styles.meta}>
                 No issues yet.
               </td>
             </tr>
