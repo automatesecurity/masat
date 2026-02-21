@@ -43,6 +43,7 @@ from utils.history import (
 from utils.assets import default_assets_db_path, list_assets, count_assets, upsert_asset, Asset
 from utils.dashboard import build_dashboard_metrics
 from utils.exposure import extract_open_ports_from_results
+from utils.ports_summary import summarize_open_ports_by_asset
 
 
 app = FastAPI(title="MASAT API", version="0.1")
@@ -254,6 +255,76 @@ def assets(limit: int = 30, offset: int = 0) -> dict[str, Any]:
     off = max(0, int(offset))
     rows = [a.to_dict() for a in list_assets(db_path, limit=lim, offset=off)]
     return {"assets": rows, "total": count_assets(db_path), "limit": lim, "offset": off}
+
+
+@app.get("/exposure/ports")
+def exposure_ports(limit: int = 10) -> dict[str, Any]:
+    """Top exposed ports across the latest run per target.
+
+    Returns: [{port, assets}] where assets is the count of distinct hosts.
+    """
+
+    runs_db = default_db_path()
+
+    latest_runs = list_latest_runs_per_target(runs_db, limit_targets=800)
+
+    # Load details for latest runs (cap to keep it snappy)
+    details: list[dict[str, Any]] = []
+    for r in latest_runs[:600]:
+        rid = int(r.get("id") or 0)
+        if not rid:
+            continue
+        d = get_run(runs_db, rid)
+        if d:
+            details.append(d)
+
+    _assets_by_port, counts = summarize_open_ports_by_asset(details, max_assets=600)
+
+    lim = max(1, min(50, int(limit)))
+    top = counts.most_common(lim)
+
+    return {
+        "ports": [{"port": p, "assets": int(n)} for p, n in top],
+    }
+
+
+@app.get("/assets/exposed")
+def assets_exposed(port: str, limit: int = 30, offset: int = 0) -> dict[str, Any]:
+    """Return inventory assets that appear exposed on a given port.
+
+    This is derived from latest run evidence. Best-effort only.
+    """
+
+    p = (port or "").strip()
+    if not p:
+        raise HTTPException(status_code=400, detail="Missing port")
+
+    assets_db = default_assets_db_path()
+    runs_db = default_db_path()
+
+    latest_runs = list_latest_runs_per_target(runs_db, limit_targets=1200)
+
+    details: list[dict[str, Any]] = []
+    for r in latest_runs[:900]:
+        rid = int(r.get("id") or 0)
+        if not rid:
+            continue
+        d = get_run(runs_db, rid)
+        if d:
+            details.append(d)
+
+    assets_by_port, _counts = summarize_open_ports_by_asset(details, max_assets=900)
+    exposed_hosts = assets_by_port.get(p, set())
+
+    # Filter inventory assets to just those hosts.
+    inv = [a.to_dict() for a in list_assets(assets_db, limit=5000, offset=0)]
+    filtered = [a for a in inv if str(a.get("value") or "").strip().lower().rstrip(".") in exposed_hosts]
+
+    lim = max(1, min(200, int(limit)))
+    off = max(0, int(offset))
+    page = filtered[off : off + lim]
+
+    return {"assets": page, "total": len(filtered), "limit": lim, "offset": off, "port": p}
 
 
 @app.get("/asset")

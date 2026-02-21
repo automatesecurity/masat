@@ -2,13 +2,16 @@ import AppShell from "@/app/_components/AppShell";
 import styles from "@/app/_components/appShell.module.css";
 import { KpiRow } from "@/app/_components/KpiRow";
 import SeverityBar from "@/app/_components/SeverityBar";
-import { fetchDashboard } from "@/lib/masatApi";
+import { fetchDashboard, fetchTopExposedPorts } from "@/lib/masatApi";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const m = await fetchDashboard().catch(() => null);
+  const [m, topPorts] = await Promise.all([
+    fetchDashboard().catch(() => null),
+    fetchTopExposedPorts(10).catch(() => []),
+  ]);
 
   return (
     <AppShell
@@ -69,6 +72,49 @@ export default async function DashboardPage() {
               <Link className={styles.actionLink} href="/scan">
                 Run a scan
               </Link>
+            </div>
+          </section>
+
+          <section className={styles.card}>
+            <div className={styles.cardHeader}>
+              <div className={styles.sectionTitle}>Top exposed ports</div>
+              <div className={styles.meta}>Across latest scan evidence; click to filter assets.</div>
+            </div>
+
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={{ width: 140 }}>Port</th>
+                    <th style={{ width: 160 }}>Assets</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topPorts.map((p) => (
+                    <tr key={p.port}>
+                      <td>
+                        <strong>{p.port}</strong>
+                      </td>
+                      <td className={styles.meta}>{p.assets}</td>
+                      <td>
+                        <div className={styles.actions}>
+                          <Link className={styles.actionLink} href={`/assets?port=${encodeURIComponent(p.port)}`}>
+                            View assets
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {topPorts.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className={styles.meta}>
+                        No port exposure evidence yet. Run scans with nmap enabled.
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
             </div>
           </section>
 

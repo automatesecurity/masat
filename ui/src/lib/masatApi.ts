@@ -122,10 +122,41 @@ export type AssetDetail = {
   openPorts: { port: string; service: string; version: string }[];
 };
 
+export type ExposedPort = { port: string; assets: number };
+
 export async function fetchAssetDetail(value: string): Promise<AssetDetail> {
   const res = await fetch(`${baseUrl()}/asset?value=${encodeURIComponent(value)}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`MASAT /asset failed: ${res.status}`);
   return (await res.json()) as AssetDetail;
+}
+
+export async function fetchTopExposedPorts(limit = 10): Promise<ExposedPort[]> {
+  const res = await fetch(`${baseUrl()}/exposure/ports?limit=${limit}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`MASAT /exposure/ports failed: ${res.status}`);
+  const data = await res.json();
+  return (data.ports || []) as ExposedPort[];
+}
+
+export async function fetchAssetsExposedPage(params: {
+  port: string;
+  limit?: number;
+  offset?: number;
+}): Promise<Page<AssetRow>> {
+  const limit = params.limit ?? 30;
+  const offset = params.offset ?? 0;
+
+  const res = await fetch(
+    `${baseUrl()}/assets/exposed?port=${encodeURIComponent(params.port)}&limit=${limit}&offset=${offset}`,
+    { cache: "no-store" },
+  );
+  if (!res.ok) throw new Error(`MASAT /assets/exposed failed: ${res.status}`);
+  const data = await res.json();
+  return {
+    items: data.assets || [],
+    total: Number(data.total || 0),
+    limit: Number(data.limit || limit),
+    offset: Number(data.offset || offset),
+  };
 }
 
 export async function runScan(params: {
