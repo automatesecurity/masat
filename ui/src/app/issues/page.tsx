@@ -15,6 +15,7 @@ export default async function IssuesPage({
   const sp = (await searchParams) || {};
 
   const status = typeof sp.status === "string" ? sp.status : "";
+  const owner = typeof sp.owner === "string" ? sp.owner : "";
   const pageRaw = typeof sp.page === "string" ? sp.page : "1";
   const pageSizeRaw = typeof sp.pageSize === "string" ? sp.pageSize : "30";
 
@@ -22,7 +23,12 @@ export default async function IssuesPage({
   const page = Math.max(1, Number(pageRaw) || 1);
   const offset = (page - 1) * pageSize;
 
-  const issuesPage = await fetchIssuesPage({ limit: pageSize, offset, status: status || undefined }).catch(() => ({
+  const issuesPage = await fetchIssuesPage({
+    limit: pageSize,
+    offset,
+    status: status || undefined,
+    owner: owner || undefined,
+  }).catch(() => ({
     items: [],
     total: 0,
     limit: pageSize,

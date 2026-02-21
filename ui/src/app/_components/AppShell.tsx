@@ -101,7 +101,12 @@ export default function AppShell({
             {subtitle ? <p className={styles.subtitle}>{subtitle}</p> : null}
           </div>
 
-          {pills ? <div className={styles.pills}>{pills}</div> : null}
+          <div className={styles.pills}>
+            {pills}
+            <Link className={styles.actionLink} href="/settings">
+              Settings
+            </Link>
+          </div>
         </div>
 
         <div className={styles.grid}>{children}</div>
