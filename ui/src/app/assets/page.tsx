@@ -33,6 +33,7 @@ export default async function AssetsPage({
   const port = typeof sp.port === "string" ? sp.port : "";
   const owned = typeof sp.owned === "string" ? sp.owned : "";
   const env = typeof sp.env === "string" ? sp.env : "";
+  const owner = typeof sp.owner === "string" ? sp.owner : "";
   const ownedBool = owned === "1" ? true : owned === "0" ? false : undefined;
 
   const pageRaw = typeof sp.page === "string" ? sp.page : "1";
@@ -48,7 +49,13 @@ export default async function AssetsPage({
         limit: pageSize,
         offset,
       }))
-    : await fetchAssetsPage({ limit: pageSize, offset }).catch(() => ({
+    : await fetchAssetsPage({
+        limit: pageSize,
+        offset,
+        env: env || undefined,
+        owned: ownedBool,
+        owner: owner || undefined,
+      }).catch(() => ({
         items: [],
         total: 0,
         limit: pageSize,
@@ -60,12 +67,11 @@ export default async function AssetsPage({
   const allTags = uniq(assets.flatMap((a) => a.tags || []));
   const allEnvs = uniq(assets.map((a) => a.environment || "").filter(Boolean));
 
-  // Very simple saved views (server-side presets via ?view=...)
+  // Minimal client-side filtering: q and a couple saved views.
+  // env/owned/owner are applied server-side via API filters.
   const viewFilter = (a: AssetRow) => {
     if (view === "prod") return (a.environment || "").toLowerCase() === "prod";
     if (view === "internet") return (a.tags || []).map((t) => t.toLowerCase()).includes("internet-facing");
-    if (env) return (a.environment || "").toLowerCase() === env.toLowerCase();
-    if (owned === "1") return (a.tags || []).map((t) => t.toLowerCase()).includes("owned") || (a.tags || []).map((t) => t.toLowerCase()).includes("in-scope");
     return true;
   };
 
@@ -118,12 +124,13 @@ export default async function AssetsPage({
           {port ? <input type="hidden" name="port" value={port} /> : null}
           {env ? <input type="hidden" name="env" value={env} /> : null}
           {owned ? <input type="hidden" name="owned" value={owned} /> : null}
+          {owner ? <input type="hidden" name="owner" value={owner} /> : null}
           <input type="hidden" name="page" value="1" />
           <input type="hidden" name="pageSize" value={String(pageSize)} />
           <button className={styles.buttonSecondary} type="submit">
             Apply
           </button>
-          {port || env || owned ? (
+          {port || env || owned || owner ? (
             <Link className={styles.actionLink} href="/assets">
               Clear filters
             </Link>
@@ -142,7 +149,7 @@ export default async function AssetsPage({
           page={page}
           pageSize={pageSize}
           total={assetsPage.total}
-          params={{ q, view, port, env, owned, pageSize: String(pageSize) }}
+          params={{ q, view, port, env, owned, owner, pageSize: String(pageSize) }}
         />
 
         <div className={styles.tableWrap}>
