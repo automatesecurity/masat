@@ -10,7 +10,7 @@ export default function AppShell({
   pills,
   children,
 }: {
-  active: "scan" | "runs" | "assets" | "changes";
+  active: "scan" | "runs" | "assets" | "changes" | "seed";
   title: string;
   subtitle?: string;
   pills?: ReactNode;
@@ -44,6 +44,15 @@ export default function AppShell({
             <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
               <Icon name="scan" />
               Scan
+            </span>
+          </Link>
+          <Link
+            className={`${styles.navItem} ${active === "seed" ? styles.navItemActive : ""}`}
+            href="/seed"
+          >
+            <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+              <Icon name="seed" />
+              Seeding
             </span>
           </Link>
           <Link

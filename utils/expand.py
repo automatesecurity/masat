@@ -123,12 +123,20 @@ async def expand_domain(
     *,
     include_input: bool = True,
     use_crtsh: bool = True,
+    use_common_prefixes: bool = False,
+    common_prefixes: list[str] | None = None,
     resolve: bool = True,
     max_hosts: int = 500,
     max_dns_lookups: int = 2000,
     dns_concurrency: int = 50,
 ) -> list[ExpandedAsset]:
-    """Expand a root domain into concrete EASM assets."""
+    """Expand a root domain into concrete EASM assets.
+
+    Sources:
+    - input (the root domain)
+    - crt.sh (certificate transparency)
+    - common prefixes (small curated list; optional)
+    """
 
     d = _normalize_hostname(domain)
     if not d:
@@ -144,6 +152,27 @@ async def expand_domain(
         except Exception:
             crt_names = []
         names.extend((n, "crtsh") for n in crt_names)
+
+    if use_common_prefixes:
+        prefixes = common_prefixes or [
+            "www",
+            "api",
+            "app",
+            "admin",
+            "portal",
+            "login",
+            "auth",
+            "console",
+            "dashboard",
+            "status",
+            "staging",
+            "dev",
+        ]
+        for p in prefixes:
+            p2 = (p or "").strip().lower().strip(".")
+            if not p2:
+                continue
+            names.append((f"{p2}.{d}", "common"))
 
     # Dedupe with stable ordering.
     seen: set[str] = set()

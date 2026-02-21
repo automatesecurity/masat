@@ -1,4 +1,4 @@
-export function Icon({ name }: { name: "changes" | "scan" | "runs" | "assets" }) {
+export function Icon({ name }: { name: "changes" | "scan" | "runs" | "assets" | "seed" }) {
   const common = {
     width: 16,
     height: 16,
@@ -44,6 +44,24 @@ export function Icon({ name }: { name: "changes" | "scan" | "runs" | "assets" })
       <svg {...common}>
         <path
           d="M4 4h8M4 8h8M4 12h8"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+
+  if (name === "seed") {
+    return (
+      <svg {...common}>
+        <path
+          d="M8 2.5c2.6 2.1 3.9 4 3.9 5.6A3.9 3.9 0 0 1 8 12a3.9 3.9 0 0 1-3.9-3.9C4.1 6.5 5.4 4.6 8 2.5Z"
+          stroke="currentColor"
+          strokeWidth="1.4"
+        />
+        <path
+          d="M8 6.1v4.1"
           stroke="currentColor"
           strokeWidth="1.4"
           strokeLinecap="round"
