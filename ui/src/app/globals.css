@@ -1,21 +1,20 @@
 :root {
-  /* SaaS-ish neutral palette */
-  --bg: #0b1220;
-  --bg2: #0e172a;
-  --panel: rgba(255, 255, 255, 0.06);
-  --panel2: rgba(255, 255, 255, 0.08);
-  --border: rgba(255, 255, 255, 0.12);
+  /* Linear-ish neutral palette (dark) */
+  --bg: #0b0d12;
+  --bg2: #0b0d12;
+  --surface: rgba(255, 255, 255, 0.04);
+  --surface2: rgba(255, 255, 255, 0.06);
+  --border: rgba(255, 255, 255, 0.10);
 
   --text: rgba(255, 255, 255, 0.92);
   --muted: rgba(255, 255, 255, 0.66);
-  --muted2: rgba(255, 255, 255, 0.52);
+  --muted2: rgba(255, 255, 255, 0.50);
 
-  --brand: #7c3aed; /* violet */
-  --brand2: #22c55e; /* green */
+  --brand: #7c3aed; /* keep violet accent */
   --danger: #ef4444;
 
-  --shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
-  --radius: 14px;
+  --shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  --radius: 12px;
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
     "Apple Color Emoji", "Segoe UI Emoji";
@@ -23,7 +22,6 @@
     "Courier New", monospace;
 }
 
-/* Default to a modern dark SaaS look (no auto light/dark switching yet) */
 html {
   color-scheme: dark;
 }
@@ -37,8 +35,8 @@ body {
 body {
   color: var(--text);
   background:
-    radial-gradient(1200px 700px at 15% -10%, rgba(124, 58, 237, 0.28), transparent 55%),
-    radial-gradient(900px 600px at 85% 0%, rgba(34, 197, 94, 0.14), transparent 55%),
+    radial-gradient(900px 600px at 15% -10%, rgba(124, 58, 237, 0.18), transparent 55%),
+    radial-gradient(800px 600px at 85% 0%, rgba(255, 255, 255, 0.06), transparent 60%),
     linear-gradient(180deg, var(--bg), var(--bg2));
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
