@@ -62,6 +62,16 @@ make test
 
 ## Usage
 
+### EASM: Expand a domain into assets
+```bash
+masat expand example.com --output json
+```
+
+Safe defaults:
+- CT expansion enabled (crt.sh)
+- DNS resolution enabled
+- Hard limits (`--max-hosts`, `--max-dns-lookups`)
+
 ### List available scans
 ```bash
 masat scans
