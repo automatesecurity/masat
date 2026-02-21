@@ -91,7 +91,7 @@ async def scan(req: ScanRequest) -> dict[str, Any]:
         res = await reg[scan_id].scan(req.target, False)
         results.update(res)
 
-    findings = [f.to_dict() for f in normalize_findings(results)]
+    findings = [f.to_dict() for f in normalize_findings(results, asset=req.target)]
 
     run_id = None
     if req.store:

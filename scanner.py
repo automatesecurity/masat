@@ -241,7 +241,7 @@ def main():
     summary, synthesis, remediation = generate_summary(results)
 
     if args.output == "json":
-        normalized = [f.to_dict() for f in normalize_findings(results)]
+        normalized = [f.to_dict() for f in normalize_findings(results, asset=args.target)]
         payload = {
             "target": args.target,
             "scans": sorted(list(scans)),
@@ -284,7 +284,7 @@ def main():
 
     # Optional local history
     if args.store:
-        normalized = [f.to_dict() for f in normalize_findings(results)]
+        normalized = [f.to_dict() for f in normalize_findings(results, asset=args.target)]
         db_path = args.db or default_db_path()
         run_id = store_run(db_path, args.target, sorted(list(scans)), results, normalized)
         if args.verbose:
