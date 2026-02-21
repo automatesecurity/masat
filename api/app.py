@@ -37,6 +37,7 @@ from utils.history import (
     count_runs,
     count_runs_since,
     list_latest_runs_per_target,
+    list_latest_runs_per_target_asof,
     list_runs_matching_host,
     get_run,
 )
@@ -137,7 +138,61 @@ def dashboard() -> dict[str, Any]:
         runs_7d=runs_7d,
     )
 
-    return {"metrics": metrics.to_dict()}
+    # Trend snapshots (score as-of 7d and 30d)
+    def snapshot(asof_ts: int) -> dict[str, Any] | None:
+        runs = list_latest_runs_per_target_asof(runs_db, asof_ts, limit_targets=300)
+        if not runs:
+            return None
+        details: dict[int, dict[str, Any]] = {}
+        for r in runs[:200]:
+            rid = int(r.get("id") or 0)
+            if not rid:
+                continue
+            d = get_run(runs_db, rid)
+            if d:
+                details[rid] = d
+
+        m2 = build_dashboard_metrics(
+            assets=assets_rows,
+            latest_runs=runs,
+            run_details_by_id=details,
+            total_runs=total_runs,
+            runs_24h=runs_24h,
+            runs_7d=runs_7d,
+        )
+        return {
+            "ts": asof_ts,
+            "score": m2.score,
+            "score_categories": m2.score_categories,
+            "open_ports_total": m2.open_ports_total,
+            "findings_by_sev": m2.findings_by_sev,
+            "coverage_30d_pct": m2.coverage_30d_pct,
+        }
+
+    snap_7d = snapshot(now - 7 * 24 * 3600)
+    snap_30d = snapshot(now - 30 * 24 * 3600)
+
+    narrative: list[str] = []
+    if snap_7d:
+        delta = int(metrics.score) - int(snap_7d.get("score") or 0)
+        if delta != 0:
+            narrative.append(f"Score change vs 7d: {delta:+d}.")
+        dp = int(metrics.open_ports_total) - int(snap_7d.get("open_ports_total") or 0)
+        if dp != 0:
+            narrative.append(f"Open ports (latest evidence) change vs 7d: {dp:+d}.")
+        # Findings deltas
+        fb_now = metrics.findings_by_sev or {}
+        fb_old = snap_7d.get("findings_by_sev") or {}
+        for k in ["critical", "high", "medium", "low"]:
+            d0 = int(fb_now.get(k) or 0) - int(fb_old.get(k) or 0)
+            if d0:
+                narrative.append(f"{k.title()} findings change vs 7d: {d0:+d}.")
+
+    return {
+        "metrics": metrics.to_dict(),
+        "trend": {"asof7d": snap_7d, "asof30d": snap_30d},
+        "narrative": narrative,
+    }
 
 
 @app.get("/scans")

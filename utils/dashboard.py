@@ -61,12 +61,7 @@ def _count_open_ports(results: dict[str, Any]) -> int:
 
 
 def _score_from_buckets(b: dict[str, int]) -> int:
-    """Convert severity bucket counts into a 0-100 score.
-
-    Heuristic:
-    - Critical findings hurt most.
-    - A score of 100 means no findings.
-    """
+    """Convert severity bucket counts into a 0-100 score."""
 
     critical = int(b.get("critical") or 0)
     high = int(b.get("high") or 0)
@@ -75,6 +70,72 @@ def _score_from_buckets(b: dict[str, int]) -> int:
 
     penalty = critical * 18 + high * 8 + med * 3 + low * 1
     return max(0, min(100, 100 - penalty))
+
+
+def _score_exposed_services(open_ports_total: int, assets_scanned_30d: int) -> int:
+    """0-100 score for exposed services.
+
+    Uses open port count as a coarse proxy. We normalize by assets_scanned_30d
+    to avoid penalizing large inventories too much.
+    """
+
+    denom = max(1, int(assets_scanned_30d))
+    ports_per_asset = float(open_ports_total) / float(denom)
+
+    # Heuristic thresholds.
+    if ports_per_asset <= 0.5:
+        return 95
+    if ports_per_asset <= 1.0:
+        return 88
+    if ports_per_asset <= 2.0:
+        return 78
+    if ports_per_asset <= 4.0:
+        return 62
+    if ports_per_asset <= 7.0:
+        return 45
+    return 30
+
+
+def _score_coverage(coverage_pct: int) -> int:
+    c = max(0, min(100, int(coverage_pct)))
+    if c >= 95:
+        return 95
+    if c >= 80:
+        return 85
+    if c >= 60:
+        return 72
+    if c >= 40:
+        return 58
+    if c >= 20:
+        return 45
+    return 30
+
+
+def _score_activity(runs_7d: int) -> int:
+    r = int(runs_7d)
+    if r >= 50:
+        return 92
+    if r >= 20:
+        return 85
+    if r >= 10:
+        return 78
+    if r >= 4:
+        return 65
+    if r >= 1:
+        return 52
+    return 35
+
+
+def _weighted_score(parts: dict[str, tuple[int, int]]) -> int:
+    """parts: name -> (score, weight)."""
+
+    total_w = sum(w for _s, w in parts.values())
+    if total_w <= 0:
+        return 0
+    acc = 0.0
+    for s, w in parts.values():
+        acc += float(max(0, min(100, int(s)))) * float(w)
+    return int(round(acc / float(total_w)))
 
 
 @dataclass(frozen=True)
@@ -100,8 +161,10 @@ class DashboardMetrics:
     findings_by_sev: dict[str, int]
     open_ports_total: int
 
-    # headline score
+    # scoring
     score: int
+    score_categories: dict[str, int]
+    score_weights: dict[str, int]
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -173,7 +236,28 @@ def build_dashboard_metrics(
     total_assets = len(assets)
     coverage_30d_pct = int(round((assets_scanned_30d / total_assets) * 100)) if total_assets else 0
 
-    score = _score_from_buckets(findings_by_sev)
+    # Category scores (0-100)
+    score_vuln = _score_from_buckets(findings_by_sev)
+    score_exposure = _score_exposed_services(open_ports_total, assets_scanned_30d)
+    score_cov = _score_coverage(coverage_30d_pct)
+    score_act = _score_activity(runs_7d)
+
+    # Weights: bias toward vuln + exposure, then coverage.
+    weights = {
+        "vulnerability": 45,
+        "exposure": 30,
+        "coverage": 15,
+        "activity": 10,
+    }
+
+    score = _weighted_score(
+        {
+            "vulnerability": (score_vuln, weights["vulnerability"]),
+            "exposure": (score_exposure, weights["exposure"]),
+            "coverage": (score_cov, weights["coverage"]),
+            "activity": (score_act, weights["activity"]),
+        }
+    )
 
     return DashboardMetrics(
         ts=now,
@@ -189,4 +273,11 @@ def build_dashboard_metrics(
         findings_by_sev=findings_by_sev,
         open_ports_total=int(open_ports_total),
         score=int(score),
+        score_categories={
+            "vulnerability": int(score_vuln),
+            "exposure": int(score_exposure),
+            "coverage": int(score_cov),
+            "activity": int(score_act),
+        },
+        score_weights={k: int(v) for k, v in weights.items()},
     )

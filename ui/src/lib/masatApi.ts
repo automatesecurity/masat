@@ -47,6 +47,23 @@ export type DashboardMetrics = {
   findings_by_sev: Record<string, number>;
   open_ports_total: number;
   score: number;
+  score_categories: Record<string, number>;
+  score_weights: Record<string, number>;
+};
+
+export type DashboardSnapshot = {
+  ts: number;
+  score: number;
+  score_categories: Record<string, number>;
+  open_ports_total: number;
+  findings_by_sev: Record<string, number>;
+  coverage_30d_pct: number;
+};
+
+export type DashboardResponse = {
+  metrics: DashboardMetrics;
+  trend: { asof7d: DashboardSnapshot | null; asof30d: DashboardSnapshot | null };
+  narrative: string[];
 };
 
 function baseUrl() {
@@ -108,11 +125,10 @@ export async function fetchRun(id: number): Promise<RunDetail> {
   return data.run as RunDetail;
 }
 
-export async function fetchDashboard(): Promise<DashboardMetrics> {
+export async function fetchDashboard(): Promise<DashboardResponse> {
   const res = await fetch(`${baseUrl()}/dashboard`, { cache: "no-store" });
   if (!res.ok) throw new Error(`MASAT /dashboard failed: ${res.status}`);
-  const data = await res.json();
-  return data.metrics as DashboardMetrics;
+  return (await res.json()) as DashboardResponse;
 }
 
 export type AssetDetail = {

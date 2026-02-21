@@ -8,10 +8,14 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const [m, topPorts] = await Promise.all([
+  const [dash, topPorts] = await Promise.all([
     fetchDashboard().catch(() => null),
     fetchTopExposedPorts(10).catch(() => []),
   ]);
+
+  const m = dash?.metrics || null;
+  const trend7d = dash?.trend?.asof7d || null;
+  const narrative = dash?.narrative || [];
 
   return (
     <AppShell
@@ -22,6 +26,12 @@ export default async function DashboardPage() {
         m ? (
           <>
             <span className={styles.pill}>Score: {m.score}/100</span>
+            {trend7d ? (
+              <span className={styles.pill}>
+                7d Δ: {m.score - trend7d.score >= 0 ? "+" : ""}
+                {m.score - trend7d.score}
+              </span>
+            ) : null}
             <span className={styles.pill}>Coverage (30d): {m.coverage_30d_pct}%</span>
             <span className={styles.pill}>Runs (7d): {m.runs_7d}</span>
           </>
@@ -36,12 +46,48 @@ export default async function DashboardPage() {
         <>
           <KpiRow
             items={[
-              { label: "Posture score", value: `${m.score}/100`, meta: "heuristic" },
+              { label: "Posture score", value: `${m.score}/100`, meta: "weighted" },
               { label: "Total assets", value: m.total_assets },
               { label: "Coverage", value: `${m.coverage_30d_pct}%`, meta: "assets scanned in 30d" },
-              { label: "Open ports", value: m.open_ports_total, meta: "from latest scans" },
+              { label: "Open ports", value: m.open_ports_total, meta: "latest evidence" },
             ]}
           />
+
+          <section className={styles.card}>
+            <div className={styles.cardHeader}>
+              <div className={styles.sectionTitle}>Score breakdown</div>
+              <div className={styles.meta}>Category scores (0–100) with weights.</div>
+            </div>
+
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th style={{ width: 140 }}>Score</th>
+                    <th style={{ width: 120 }}>Weight</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(m.score_categories || {}).map(([k, v]) => (
+                    <tr key={k}>
+                      <td>
+                        <strong>{k}</strong>
+                      </td>
+                      <td className={styles.meta}>{v}</td>
+                      <td className={styles.meta}>{m.score_weights?.[k] ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {narrative.length ? (
+              <div className={styles.meta} style={{ marginTop: 12 }}>
+                <strong>What changed:</strong> {narrative.join(" ")}
+              </div>
+            ) : null}
+          </section>
 
           <section className={styles.card}>
             <div className={styles.cardHeader}>
