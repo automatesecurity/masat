@@ -107,6 +107,9 @@ export default async function DashboardPage() {
               <Link className={styles.actionLink} href="/onboarding">
                 Onboarding
               </Link>
+              <Link className={styles.actionLink} href="/issues">
+                Issues queue
+              </Link>
               <Link className={styles.actionLink} href="/changes">
                 View drift (Changes)
               </Link>

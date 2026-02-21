@@ -10,7 +10,7 @@ export default function AppShell({
   pills,
   children,
 }: {
-  active: "dashboard" | "changes" | "scan" | "runs" | "assets" | "seed";
+  active: "dashboard" | "changes" | "scan" | "runs" | "assets" | "seed" | "issues";
   title: string;
   subtitle?: string;
   pills?: ReactNode;
@@ -80,6 +80,15 @@ export default function AppShell({
             <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
               <Icon name="assets" />
               Assets
+            </span>
+          </Link>
+          <Link
+            className={`${styles.navItem} ${active === "issues" ? styles.navItemActive : ""}`}
+            href="/issues"
+          >
+            <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+              <Icon name="changes" />
+              Issues
             </span>
           </Link>
         </nav>
