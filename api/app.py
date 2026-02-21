@@ -122,3 +122,36 @@ def assets(limit: int = 200) -> dict[str, Any]:
     db_path = default_assets_db_path()
     rows = [a.to_dict() for a in list_assets(db_path, limit=limit)]
     return {"assets": rows}
+
+
+@app.get("/runs/{run_id}/report")
+def run_report(run_id: int, format: str = "md") -> dict[str, Any] | str:
+    """Return an on-demand report for a stored run.
+
+    Note: response is plain text/html (not JSON) for easy download.
+    """
+
+    from fastapi.responses import PlainTextResponse, HTMLResponse
+
+    db_path = default_db_path()
+    run = get_run(db_path, run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    from utils.report_templates import RunForReport, run_to_html, run_to_json, run_to_markdown
+
+    r = RunForReport(
+        id=int(run["id"]),
+        ts=int(run["ts"]),
+        target=str(run["target"]),
+        scans=list(run.get("scans") or []),
+        results=dict(run.get("results") or {}),
+        findings=list(run.get("findings") or []),
+    )
+
+    if format == "json":
+        return PlainTextResponse(run_to_json(r), media_type="application/json")
+    if format == "html":
+        return HTMLResponse(run_to_html(r))
+
+    return PlainTextResponse(run_to_markdown(r), media_type="text/markdown")
