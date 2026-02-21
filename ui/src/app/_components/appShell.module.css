@@ -1,32 +1,32 @@
 .shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 272px 1fr;
 }
 
 .sidebar {
   position: sticky;
   top: 0;
   height: 100vh;
-  padding: 18px;
+  padding: 16px;
   border-right: 1px solid var(--border);
-  background: rgba(0, 0, 0, 0.18);
-  backdrop-filter: blur(10px);
+  background: rgba(0, 0, 0, 0.20);
+  backdrop-filter: blur(12px);
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 18px;
+  margin: 4px 0 16px;
 }
 
 .logo {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 10px;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 1), rgba(34, 197, 94, 1));
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 1), rgba(124, 58, 237, 0.55));
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
 }
 
 .brandText {
@@ -34,7 +34,7 @@
 }
 
 .brandName {
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: -0.02em;
 }
 
@@ -50,10 +50,11 @@
 }
 
 .navItem {
-  padding: 10px 12px;
-  border-radius: 12px;
+  padding: 9px 10px;
+  border-radius: 10px;
   border: 1px solid transparent;
   color: var(--muted);
+  font-weight: 650;
 }
 
 .navItem:hover {
@@ -61,8 +62,8 @@
 }
 
 .navItemActive {
-  background: var(--panel);
-  border-color: var(--border);
+  background: var(--surface);
+  border-color: rgba(255, 255, 255, 0.14);
   color: var(--text);
 }
 
@@ -120,7 +121,7 @@
 
 .card {
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface);
   border-radius: var(--radius);
   padding: 16px;
   box-shadow: var(--shadow);
@@ -168,8 +169,8 @@
 .select {
   width: 100%;
   padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
   background: rgba(0, 0, 0, 0.20);
   color: var(--text);
   outline: none;
@@ -177,8 +178,8 @@
 
 .input:focus,
 .select:focus {
-  border-color: rgba(124, 58, 237, 0.8);
-  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.18);
+  border-color: rgba(255, 255, 255, 0.20);
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.14);
 }
 
 .row {
@@ -197,28 +198,28 @@
 }
 
 .button {
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(124, 58, 237, 0.55);
-  background: linear-gradient(135deg, rgba(124, 58, 237, 1), rgba(99, 102, 241, 1));
-  color: white;
-  font-weight: 800;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.10);
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 750;
   cursor: pointer;
 }
 
 .buttonSecondary {
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: rgba(0, 0, 0, 0.18);
-  color: rgba(255, 255, 255, 0.88);
-  font-weight: 750;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.16);
+  color: rgba(255, 255, 255, 0.86);
+  font-weight: 700;
   cursor: pointer;
 }
 
 .button:hover,
 .buttonSecondary:hover {
-  filter: brightness(1.05);
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .error {
