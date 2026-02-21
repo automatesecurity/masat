@@ -23,17 +23,23 @@ def default_db_path() -> str:
 def _connect(db_path: str) -> sqlite3.Connection:
     # Ensure parent directory exists at time of use.
     #
-    # IMPORTANT: `db_path` can be user-provided (CLI/API). Creating directories
-    # for arbitrary paths is an unsafe pattern and is flagged by CodeQL.
-    # We only auto-create the default MASAT DB directory; for any custom path,
-    # require the directory to already exist.
-    parent = os.path.dirname(os.path.abspath(db_path))
-    default_parent = os.path.dirname(os.path.abspath(default_db_path()))
+    # IMPORTANT: `db_path` can be user-provided (CLI/API). We treat it as untrusted.
+    # Restrict DB paths to the MASAT data directory (~/.masat) to avoid path traversal
+    # and other unsafe filesystem access patterns.
 
-    if parent and os.path.commonpath([parent, default_parent]) == default_parent:
-        os.makedirs(parent, exist_ok=True)
+    default_dir = os.path.realpath(os.path.dirname(default_db_path()))
+    resolved = os.path.realpath(db_path)
 
-    conn = sqlite3.connect(db_path)
+    # Only auto-create the default MASAT directory. For any custom path, require
+    # the directory to already exist (avoid unsafe directory creation).
+    if os.path.commonpath([resolved, default_dir]) == default_dir:
+        os.makedirs(default_dir, exist_ok=True)
+    else:
+        parent = os.path.dirname(resolved)
+        if not os.path.isdir(parent):
+            raise ValueError("Custom DB path directory must already exist")
+
+    conn = sqlite3.connect(resolved)
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS runs (

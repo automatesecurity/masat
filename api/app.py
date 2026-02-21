@@ -103,14 +103,14 @@ async def scan(req: ScanRequest) -> dict[str, Any]:
 
 
 @app.get("/runs")
-def runs(limit: int = 20, db: str | None = None) -> dict[str, Any]:
-    db_path = db or default_db_path()
+def runs(limit: int = 20) -> dict[str, Any]:
+    db_path = default_db_path()
     return {"runs": list_runs(db_path, limit=limit)}
 
 
 @app.get("/runs/{run_id}")
-def run_detail(run_id: int, db: str | None = None) -> dict[str, Any]:
-    db_path = db or default_db_path()
+def run_detail(run_id: int) -> dict[str, Any]:
+    db_path = default_db_path()
     run = get_run(db_path, run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
@@ -118,7 +118,7 @@ def run_detail(run_id: int, db: str | None = None) -> dict[str, Any]:
 
 
 @app.get("/assets")
-def assets(limit: int = 200, db: str | None = None) -> dict[str, Any]:
-    db_path = db or default_assets_db_path()
+def assets(limit: int = 200) -> dict[str, Any]:
+    db_path = default_assets_db_path()
     rows = [a.to_dict() for a in list_assets(db_path, limit=limit)]
     return {"assets": rows}
