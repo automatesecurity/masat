@@ -1,6 +1,7 @@
 import AppShell from "@/app/_components/AppShell";
 import styles from "@/app/_components/appShell.module.css";
-import { fetchScans, fetchRuns } from "@/lib/masatApi";
+import Pagination from "@/app/_components/Pagination";
+import { fetchScans, fetchRunsPage } from "@/lib/masatApi";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +23,17 @@ export default async function ScanPage({
         ? smartParam.includes("1")
         : smartParam === "1";
 
-  const [availableScans, runs] = await Promise.all([
+  const pageRaw = typeof sp.page === "string" ? sp.page : "1";
+  const pageSize = 20;
+  const page = Math.max(1, Number(pageRaw) || 1);
+  const offset = (page - 1) * pageSize;
+
+  const [availableScans, runsPage] = await Promise.all([
     fetchScans().catch(() => []),
-    fetchRuns(20).catch(() => []),
+    fetchRunsPage({ limit: pageSize, offset }).catch(() => ({ items: [], total: 0, limit: pageSize, offset })),
   ]);
+
+  const runs = runsPage.items;
 
   return (
     <AppShell
@@ -38,7 +46,7 @@ export default async function ScanPage({
             API: {process.env.NEXT_PUBLIC_MASAT_API_BASE || "http://127.0.0.1:8000"}
           </span>
           <span className={styles.pill}>Scanners: {availableScans.length}</span>
-          <span className={styles.pill}>Recent runs: {runs.length}</span>
+          <span className={styles.pill}>Recent runs: {runsPage.total}</span>
         </>
       }
     >
@@ -114,6 +122,8 @@ export default async function ScanPage({
           <div className={styles.sectionTitle}>Recent runs</div>
           <div className={styles.meta}>Stored in SQLite by the API server.</div>
         </div>
+
+        <Pagination basePath="/scan" page={page} pageSize={pageSize} total={runsPage.total} params={{ target, scans, smart: smartEnabled ? "1" : "0" }} />
 
         <div className={styles.tableWrap}>
           <table className={styles.table}>

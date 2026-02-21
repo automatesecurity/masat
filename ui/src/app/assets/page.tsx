@@ -1,6 +1,7 @@
 import AppShell from "@/app/_components/AppShell";
 import styles from "@/app/_components/appShell.module.css";
-import { fetchAssets, type AssetRow } from "@/lib/masatApi";
+import Pagination from "@/app/_components/Pagination";
+import { fetchAssetsPage, type AssetRow } from "@/lib/masatApi";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,20 @@ export default async function AssetsPage({
   const q = typeof sp.q === "string" ? sp.q : "";
   const view = typeof sp.view === "string" ? sp.view : "";
 
-  const assets = await fetchAssets(500).catch(() => []);
+  const pageRaw = typeof sp.page === "string" ? sp.page : "1";
+  const pageSizeRaw = typeof sp.pageSize === "string" ? sp.pageSize : "30";
+  const pageSize = Math.max(10, Math.min(100, Number(pageSizeRaw) || 30));
+  const page = Math.max(1, Number(pageRaw) || 1);
+  const offset = (page - 1) * pageSize;
+
+  const assetsPage = await fetchAssetsPage({ limit: pageSize, offset }).catch(() => ({
+    items: [],
+    total: 0,
+    limit: pageSize,
+    offset,
+  }));
+
+  const assets = assetsPage.items;
 
   const allTags = uniq(assets.flatMap((a) => a.tags || []));
   const allEnvs = uniq(assets.map((a) => a.environment || "").filter(Boolean));
@@ -50,7 +64,8 @@ export default async function AssetsPage({
       subtitle="Local asset inventory (EASM). Import via CLI, browse/filter here."
       pills={
         <>
-          <span className={styles.pill}>Total: {assets.length}</span>
+          <span className={styles.pill}>Total: {assetsPage.total}</span>
+          <span className={styles.pill}>Loaded: {assets.length}</span>
           <span className={styles.pill}>Filtered: {filtered.length}</span>
           <span className={styles.pill}>Tags: {allTags.length}</span>
           <span className={styles.pill}>Envs: {allEnvs.length}</span>
@@ -85,6 +100,8 @@ export default async function AssetsPage({
         <form className={styles.row} method="GET">
           <input className={styles.input} name="q" placeholder="Search..." defaultValue={q} />
           {view ? <input type="hidden" name="view" value={view} /> : null}
+          <input type="hidden" name="page" value="1" />
+          <input type="hidden" name="pageSize" value={String(pageSize)} />
           <button className={styles.buttonSecondary} type="submit">
             Apply
           </button>
@@ -96,6 +113,14 @@ export default async function AssetsPage({
           <div className={styles.sectionTitle}>Inventory</div>
           <div className={styles.meta}>Imported from `masat assets import`</div>
         </div>
+
+        <Pagination
+          basePath="/assets"
+          page={page}
+          pageSize={pageSize}
+          total={assetsPage.total}
+          params={{ q, view, pageSize: String(pageSize) }}
+        />
 
         <div className={styles.tableWrap}>
           <table className={styles.table}>

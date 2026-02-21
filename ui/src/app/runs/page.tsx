@@ -1,6 +1,7 @@
 import AppShell from "@/app/_components/AppShell";
 import styles from "@/app/_components/appShell.module.css";
-import { fetchRuns, fetchScans } from "@/lib/masatApi";
+import Pagination from "@/app/_components/Pagination";
+import { fetchRunsPage, fetchScans } from "@/lib/masatApi";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -13,13 +14,19 @@ export default async function RunsPage({
   const sp = (await searchParams) || {};
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const scan = typeof sp.scan === "string" ? sp.scan.trim() : "";
-  const limitRaw = typeof sp.limit === "string" ? sp.limit : "100";
-  const limit = Math.max(1, Math.min(500, Number(limitRaw) || 100));
 
-  const [runs, availableScans] = await Promise.all([
-    fetchRuns(limit).catch(() => []),
+  const pageRaw = typeof sp.page === "string" ? sp.page : "1";
+  const pageSizeRaw = typeof sp.pageSize === "string" ? sp.pageSize : "30";
+  const pageSize = Math.max(10, Math.min(100, Number(pageSizeRaw) || 30));
+  const page = Math.max(1, Number(pageRaw) || 1);
+  const offset = (page - 1) * pageSize;
+
+  const [runsPage, availableScans] = await Promise.all([
+    fetchRunsPage({ limit: pageSize, offset }).catch(() => ({ items: [], total: 0, limit: pageSize, offset })),
     fetchScans().catch(() => []),
   ]);
+
+  const runs = runsPage.items;
 
   const filtered = runs.filter((r) => {
     if (q) {
@@ -39,7 +46,8 @@ export default async function RunsPage({
       subtitle="Browse stored scan runs. Filter by target or scan type, drill in for findings, and export." 
       pills={
         <>
-          <span className={styles.pill}>Total loaded: {runs.length}</span>
+          <span className={styles.pill}>Total: {runsPage.total}</span>
+          <span className={styles.pill}>Loaded: {runs.length}</span>
           <span className={styles.pill}>Showing: {filtered.length}</span>
         </>
       }
@@ -72,10 +80,11 @@ export default async function RunsPage({
             </label>
 
             <label className={styles.label} style={{ minWidth: 160 }}>
-              Limit
-              <span className={styles.hint}>Max rows fetched</span>
-              <input className={styles.input} name="limit" defaultValue={String(limit)} />
+              Page size
+              <span className={styles.hint}>Rows per page</span>
+              <input className={styles.input} name="pageSize" defaultValue={String(pageSize)} />
             </label>
+            <input type="hidden" name="page" value="1" />
 
             <div className={styles.row} style={{ alignSelf: "end" }}>
               <button className={styles.buttonSecondary} type="submit">
@@ -94,6 +103,14 @@ export default async function RunsPage({
           <div className={styles.sectionTitle}>Run history</div>
           <div className={styles.meta}>Click a run to view full results and findings.</div>
         </div>
+
+        <Pagination
+          basePath="/runs"
+          page={page}
+          pageSize={pageSize}
+          total={runsPage.total}
+          params={{ q, scan, pageSize: String(pageSize) }}
+        />
 
         <div className={styles.tableWrap}>
           <table className={styles.table}>

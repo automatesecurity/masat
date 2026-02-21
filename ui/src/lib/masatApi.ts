@@ -44,18 +44,45 @@ export async function fetchScans(): Promise<Scan[]> {
   return data.scans || [];
 }
 
-export async function fetchRuns(limit = 20): Promise<RunRow[]> {
-  const res = await fetch(`${baseUrl()}/runs?limit=${limit}`, { cache: "no-store" });
+export type Page<T> = { items: T[]; total: number; limit: number; offset: number };
+
+export async function fetchRunsPage(params?: { limit?: number; offset?: number }): Promise<Page<RunRow>> {
+  const limit = params?.limit ?? 30;
+  const offset = params?.offset ?? 0;
+
+  const res = await fetch(`${baseUrl()}/runs?limit=${limit}&offset=${offset}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`MASAT /runs failed: ${res.status}`);
   const data = await res.json();
-  return data.runs || [];
+  return {
+    items: data.runs || [],
+    total: Number(data.total || 0),
+    limit: Number(data.limit || limit),
+    offset: Number(data.offset || offset),
+  };
+}
+
+export async function fetchAssetsPage(params?: { limit?: number; offset?: number }): Promise<Page<AssetRow>> {
+  const limit = params?.limit ?? 30;
+  const offset = params?.offset ?? 0;
+
+  const res = await fetch(`${baseUrl()}/assets?limit=${limit}&offset=${offset}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`MASAT /assets failed: ${res.status}`);
+  const data = await res.json();
+  return {
+    items: data.assets || [],
+    total: Number(data.total || 0),
+    limit: Number(data.limit || limit),
+    offset: Number(data.offset || offset),
+  };
+}
+
+// Back-compat helpers
+export async function fetchRuns(limit = 20): Promise<RunRow[]> {
+  return (await fetchRunsPage({ limit, offset: 0 })).items;
 }
 
 export async function fetchAssets(limit = 200): Promise<AssetRow[]> {
-  const res = await fetch(`${baseUrl()}/assets?limit=${limit}`, { cache: "no-store" });
-  if (!res.ok) throw new Error(`MASAT /assets failed: ${res.status}`);
-  const data = await res.json();
-  return data.assets || [];
+  return (await fetchAssetsPage({ limit, offset: 0 })).items;
 }
 
 export async function fetchRun(id: number): Promise<RunDetail> {
