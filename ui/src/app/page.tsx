@@ -1,5 +1,6 @@
 import AppShell from "@/app/_components/AppShell";
 import styles from "@/app/_components/appShell.module.css";
+import { KpiRow } from "@/app/_components/KpiRow";
 import { fetchRuns } from "@/lib/masatApi";
 import Link from "next/link";
 
@@ -68,28 +69,14 @@ export default async function Home() {
         </>
       }
     >
-      <section className={styles.kpiGrid} aria-label="KPIs">
-        <div className={styles.kpi}>
-          <div className={styles.kpiLabel}>Targets</div>
-          <div className={styles.kpiValue}>{totalTargets}</div>
-          <div className={styles.kpiMeta}>loaded from history</div>
-        </div>
-        <div className={styles.kpi}>
-          <div className={styles.kpiLabel}>Changed</div>
-          <div className={styles.kpiValue}>{changedTargets}</div>
-          <div className={styles.kpiMeta}>based on last 2 runs</div>
-        </div>
-        <div className={styles.kpi}>
-          <div className={styles.kpiLabel}>New ports</div>
-          <div className={styles.kpiValue}>{totalNewPorts}</div>
-          <div className={styles.kpiMeta}>added exposures</div>
-        </div>
-        <div className={styles.kpi}>
-          <div className={styles.kpiLabel}>New findings</div>
-          <div className={styles.kpiValue}>{totalNewFindings}</div>
-          <div className={styles.kpiMeta}>all severities</div>
-        </div>
-      </section>
+      <KpiRow
+        items={[
+          { label: "Targets", value: totalTargets },
+          { label: "Changed", value: changedTargets, meta: "based on last 2 runs" },
+          { label: "Runs loaded", value: runs.length },
+          { label: "API", value: "Connected", meta: process.env.NEXT_PUBLIC_MASAT_API_BASE || "127.0.0.1:8000" },
+        ]}
+      />
 
       <section className={styles.card}>
         <div className={styles.cardHeader}>
