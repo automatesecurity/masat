@@ -7,10 +7,19 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = (await searchParams) || {};
+  const env = typeof sp.env === "string" ? sp.env : "";
+  const owned = typeof sp.owned === "string" ? sp.owned : "";
+  const ownedBool = owned === "1" ? true : owned === "0" ? false : undefined;
+
   const [dash, topPorts] = await Promise.all([
-    fetchDashboard().catch(() => null),
-    fetchTopExposedPorts(10).catch(() => []),
+    fetchDashboard({ env: env || undefined, owned: ownedBool }).catch(() => null),
+    fetchTopExposedPorts(10, { env: env || undefined, owned: ownedBool }).catch(() => []),
   ]);
 
   const m = dash?.metrics || null;
@@ -58,6 +67,42 @@ export default async function DashboardPage() {
         )
       }
     >
+      <section className={styles.card}>
+        <div className={styles.cardHeader}>
+          <div className={styles.sectionTitle}>Filters</div>
+          <div className={styles.meta}>Scope the dashboard to an environment and/or owned assets.</div>
+        </div>
+        <div className={styles.actions}>
+          <Link className={styles.actionLink} href="/">
+            All
+          </Link>
+          <Link className={styles.actionLink} href="/?owned=1">
+            Owned only
+          </Link>
+          <Link className={styles.actionLink} href="/?owned=0">
+            Include unowned
+          </Link>
+          <span className={styles.meta} style={{ marginLeft: 8 }}>
+            Env:
+          </span>
+          <Link className={styles.actionLink} href="/?env=prod">
+            prod
+          </Link>
+          <Link className={styles.actionLink} href="/?env=staging">
+            staging
+          </Link>
+          <Link className={styles.actionLink} href="/?env=dev">
+            dev
+          </Link>
+        </div>
+        {(env || owned) ? (
+          <div className={styles.meta} style={{ marginTop: 10 }}>
+            Active filters: {env ? `env=${env} ` : ""}
+            {owned ? `owned=${owned}` : ""} · <Link className={styles.actionLink} href="/">Clear</Link>
+          </div>
+        ) : null}
+      </section>
+
       {m ? (
         <>
           <KpiRow
@@ -143,10 +188,20 @@ export default async function DashboardPage() {
                       <td>
                         <strong>{p.port}</strong>
                       </td>
-                      <td className={styles.meta}>{p.assets}</td>
+                      <td className={styles.meta}>
+                        {p.assets}
+                        {typeof p.riskPoints === "number" ? (
+                          <span className={styles.pill} style={{ marginLeft: 8 }}>
+                            risk {p.riskPoints}
+                          </span>
+                        ) : null}
+                      </td>
                       <td>
                         <div className={styles.actions}>
-                          <Link className={styles.actionLink} href={`/assets?port=${encodeURIComponent(p.port)}`}>
+                          <Link
+                            className={styles.actionLink}
+                            href={`/assets?port=${encodeURIComponent(p.port)}${env ? `&env=${encodeURIComponent(env)}` : ""}${owned ? `&owned=${encodeURIComponent(owned)}` : ""}`}
+                          >
                             View assets
                           </Link>
                         </div>

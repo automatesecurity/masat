@@ -92,7 +92,7 @@ export type AssetDetail = {
   openPorts: { port: string; service: string; version: string }[];
 };
 
-export type ExposedPort = { port: string; assets: number };
+export type ExposedPort = { port: string; assets: number; riskPoints?: number };
 
 export type IssueRow = {
   fingerprint: string;
@@ -114,8 +114,13 @@ function baseUrl() {
   return process.env.NEXT_PUBLIC_MASAT_API_BASE || "http://127.0.0.1:8000";
 }
 
-export async function fetchDashboard(): Promise<DashboardResponse> {
-  const res = await fetch(`${baseUrl()}/dashboard`, { cache: "no-store" });
+export async function fetchDashboard(params?: { env?: string; owned?: boolean }): Promise<DashboardResponse> {
+  const sp = new URLSearchParams();
+  if (params?.env) sp.set("env", params.env);
+  if (params?.owned !== undefined) sp.set("owned", params.owned ? "1" : "0");
+
+  const qs = sp.toString();
+  const res = await fetch(`${baseUrl()}/dashboard${qs ? `?${qs}` : ""}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`MASAT /dashboard failed: ${res.status}`);
   return (await res.json()) as DashboardResponse;
 }
@@ -179,8 +184,15 @@ export async function fetchAssetDetail(value: string): Promise<AssetDetail> {
   return (await res.json()) as AssetDetail;
 }
 
-export async function fetchTopExposedPorts(limit = 10): Promise<ExposedPort[]> {
-  const res = await fetch(`${baseUrl()}/exposure/ports?limit=${limit}`, { cache: "no-store" });
+export async function fetchTopExposedPorts(
+  limit = 10,
+  params?: { env?: string; owned?: boolean },
+): Promise<ExposedPort[]> {
+  const sp = new URLSearchParams({ limit: String(limit) });
+  if (params?.env) sp.set("env", params.env);
+  if (params?.owned !== undefined) sp.set("owned", params.owned ? "1" : "0");
+
+  const res = await fetch(`${baseUrl()}/exposure/ports?${sp.toString()}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`MASAT /exposure/ports failed: ${res.status}`);
   const data = await res.json();
   return (data.ports || []) as ExposedPort[];
@@ -190,14 +202,21 @@ export async function fetchAssetsExposedPage(params: {
   port: string;
   limit?: number;
   offset?: number;
+  env?: string;
+  owned?: boolean;
 }): Promise<Page<AssetRow>> {
   const limit = params.limit ?? 30;
   const offset = params.offset ?? 0;
 
-  const res = await fetch(
-    `${baseUrl()}/assets/exposed?port=${encodeURIComponent(params.port)}&limit=${limit}&offset=${offset}`,
-    { cache: "no-store" },
-  );
+  const sp = new URLSearchParams({
+    port: params.port,
+    limit: String(limit),
+    offset: String(offset),
+  });
+  if (params.env) sp.set("env", params.env);
+  if (params.owned !== undefined) sp.set("owned", params.owned ? "1" : "0");
+
+  const res = await fetch(`${baseUrl()}/assets/exposed?${sp.toString()}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`MASAT /assets/exposed failed: ${res.status}`);
   const data = await res.json();
   return {

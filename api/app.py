@@ -114,8 +114,31 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+def _asset_filter_rows(
+    assets_rows: list[dict[str, Any]],
+    *,
+    env: str | None = None,
+    owned: bool | None = None,
+) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for a in assets_rows or []:
+        if env:
+            if str(a.get("environment") or "").strip().lower() != env.strip().lower():
+                continue
+        if owned is True:
+            tags = [str(t).strip().lower() for t in (a.get("tags") or []) if str(t).strip()]
+            if "owned" not in tags and "in-scope" not in tags:
+                continue
+        out.append(a)
+    return out
+
+
+def _run_host(target: str) -> str:
+    return (parse_target(target).host or target).strip().lower().rstrip(".")
+
+
 @app.get("/dashboard")
-def dashboard() -> dict[str, Any]:
+def dashboard(env: str | None = None, owned: int | None = None) -> dict[str, Any]:
     """Return high-level dashboard metrics.
 
     This endpoint intentionally returns a single aggregated object so the UI can
@@ -127,14 +150,23 @@ def dashboard() -> dict[str, Any]:
 
     assets_total = count_assets(assets_db)
     # For now, we load at most 5000 assets for metrics breakdown.
-    assets_rows = [a.to_dict() for a in list_assets(assets_db, limit=min(5000, max(30, assets_total)), offset=0)]
+    assets_rows_all = [a.to_dict() for a in list_assets(assets_db, limit=min(5000, max(30, assets_total)), offset=0)]
+
+    owned_bool = True if owned == 1 else False if owned == 0 else None
+    assets_rows = _asset_filter_rows(assets_rows_all, env=env, owned=owned_bool)
+    allowed_hosts = {str(a.get("value") or "").strip().lower().rstrip(".") for a in assets_rows if str(a.get("value") or "").strip()}
 
     total_runs = count_runs(runs_db)
     now = int(time.time())
     runs_24h = count_runs_since(runs_db, now - 24 * 3600)
     runs_7d = count_runs_since(runs_db, now - 7 * 24 * 3600)
 
-    latest_runs = list_latest_runs_per_target(runs_db, limit_targets=300)
+    latest_runs_all = list_latest_runs_per_target(runs_db, limit_targets=300)
+    latest_runs = (
+        [r for r in latest_runs_all if _run_host(str(r.get("target") or "")) in allowed_hosts]
+        if allowed_hosts
+        else latest_runs_all
+    )
 
     # Load details for latest runs (cap to keep it snappy)
     run_details_by_id: dict[int, dict[str, Any]] = {}
@@ -145,11 +177,13 @@ def dashboard() -> dict[str, Any]:
             if d:
                 run_details_by_id[rid] = d
 
-    # Keep issues table in sync with the latest evidence.
-    try:
-        _sync_issues_from_latest_runs(assets_rows=assets_rows, latest_runs=latest_runs, run_details_by_id=run_details_by_id)
-    except Exception:
-        pass
+    # Keep issues table in sync with the latest evidence (global view only).
+    # If the user is filtering by env/owned, we do not mutate the canonical issues DB.
+    if env is None and owned is None:
+        try:
+            _sync_issues_from_latest_runs(assets_rows=assets_rows_all, latest_runs=latest_runs_all, run_details_by_id=run_details_by_id)
+        except Exception:
+            pass
 
     metrics = build_dashboard_metrics(
         assets=assets_rows,
@@ -162,9 +196,11 @@ def dashboard() -> dict[str, Any]:
 
     # Trend snapshots (score as-of 7d/30d/90d)
     def snapshot(asof_ts: int) -> dict[str, Any] | None:
-        runs = list_latest_runs_per_target_asof(runs_db, asof_ts, limit_targets=300)
-        if not runs:
+        runs_all = list_latest_runs_per_target_asof(runs_db, asof_ts, limit_targets=300)
+        if not runs_all:
             return None
+
+        runs = [r for r in runs_all if _run_host(str(r.get("target") or "")) in allowed_hosts] if allowed_hosts else runs_all
         details: dict[int, dict[str, Any]] = {}
         for r in runs[:200]:
             rid = int(r.get("id") or 0)
@@ -427,7 +463,7 @@ def assets(limit: int = 30, offset: int = 0) -> dict[str, Any]:
 
 
 @app.get("/exposure/ports")
-def exposure_ports(limit: int = 10) -> dict[str, Any]:
+def exposure_ports(limit: int = 10, env: str | None = None, owned: int | None = None) -> dict[str, Any]:
     """Top exposed ports across the latest run per target.
 
     Returns: [{port, assets}] where assets is the count of distinct hosts.
@@ -435,7 +471,18 @@ def exposure_ports(limit: int = 10) -> dict[str, Any]:
 
     runs_db = default_db_path()
 
-    latest_runs = list_latest_runs_per_target(runs_db, limit_targets=800)
+    assets_db = default_assets_db_path()
+    assets_rows_all = [a.to_dict() for a in list_assets(assets_db, limit=5000, offset=0)]
+    owned_bool = True if owned == 1 else False if owned == 0 else None
+    assets_rows = _asset_filter_rows(assets_rows_all, env=env, owned=owned_bool)
+    allowed_hosts = {str(a.get("value") or "").strip().lower().rstrip(".") for a in assets_rows if str(a.get("value") or "").strip()}
+
+    latest_runs_all = list_latest_runs_per_target(runs_db, limit_targets=800)
+    latest_runs = (
+        [r for r in latest_runs_all if _run_host(str(r.get("target") or "")) in allowed_hosts]
+        if allowed_hosts
+        else latest_runs_all
+    )
 
     # Load details for latest runs (cap to keep it snappy)
     details: list[dict[str, Any]] = []
@@ -447,18 +494,29 @@ def exposure_ports(limit: int = 10) -> dict[str, Any]:
         if d:
             details.append(d)
 
-    _assets_by_port, counts = summarize_open_ports_by_asset(details, max_assets=600)
+    _assets_by_port, counts, risk_points = summarize_open_ports_by_asset(details, max_assets=600)
 
     lim = max(1, min(50, int(limit)))
-    top = counts.most_common(lim)
+
+    # Default sort: highest risk points, then asset count
+    ports_sorted = sorted(
+        counts.keys(),
+        key=lambda p: (int(risk_points.get(p) or 0), int(counts.get(p) or 0)),
+        reverse=True,
+    )
+
+    ports_sorted = ports_sorted[:lim]
 
     return {
-        "ports": [{"port": p, "assets": int(n)} for p, n in top],
+        "ports": [
+            {"port": p, "assets": int(counts.get(p) or 0), "riskPoints": int(risk_points.get(p) or 0)}
+            for p in ports_sorted
+        ],
     }
 
 
 @app.get("/assets/exposed")
-def assets_exposed(port: str, limit: int = 30, offset: int = 0) -> dict[str, Any]:
+def assets_exposed(port: str, limit: int = 30, offset: int = 0, env: str | None = None, owned: int | None = None) -> dict[str, Any]:
     """Return inventory assets that appear exposed on a given port.
 
     This is derived from latest run evidence. Best-effort only.
@@ -471,7 +529,17 @@ def assets_exposed(port: str, limit: int = 30, offset: int = 0) -> dict[str, Any
     assets_db = default_assets_db_path()
     runs_db = default_db_path()
 
-    latest_runs = list_latest_runs_per_target(runs_db, limit_targets=1200)
+    assets_rows_all = [a.to_dict() for a in list_assets(assets_db, limit=5000, offset=0)]
+    owned_bool = True if owned == 1 else False if owned == 0 else None
+    assets_rows = _asset_filter_rows(assets_rows_all, env=env, owned=owned_bool)
+    allowed_hosts = {str(a.get("value") or "").strip().lower().rstrip(".") for a in assets_rows if str(a.get("value") or "").strip()}
+
+    latest_runs_all = list_latest_runs_per_target(runs_db, limit_targets=1200)
+    latest_runs = (
+        [r for r in latest_runs_all if _run_host(str(r.get("target") or "")) in allowed_hosts]
+        if allowed_hosts
+        else latest_runs_all
+    )
 
     details: list[dict[str, Any]] = []
     for r in latest_runs[:900]:
@@ -482,12 +550,11 @@ def assets_exposed(port: str, limit: int = 30, offset: int = 0) -> dict[str, Any
         if d:
             details.append(d)
 
-    assets_by_port, _counts = summarize_open_ports_by_asset(details, max_assets=900)
+    assets_by_port, _counts, _risk = summarize_open_ports_by_asset(details, max_assets=900)
     exposed_hosts = assets_by_port.get(p, set())
 
-    # Filter inventory assets to just those hosts.
-    inv = [a.to_dict() for a in list_assets(assets_db, limit=5000, offset=0)]
-    filtered = [a for a in inv if str(a.get("value") or "").strip().lower().rstrip(".") in exposed_hosts]
+    # Filter inventory assets to just those hosts (and keep env/owned filters).
+    filtered = [a for a in assets_rows if str(a.get("value") or "").strip().lower().rstrip(".") in exposed_hosts]
 
     lim = max(1, min(200, int(limit)))
     off = max(0, int(offset))
