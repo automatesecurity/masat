@@ -1,6 +1,12 @@
 export type Scan = { id: string; description?: string };
 export type RunRow = { id: number; ts: number; target: string; scans: string[] };
 
+export type RunDetail = RunRow & {
+  // API shape from GET /runs/{id}
+  results: unknown;
+  findings: Finding[];
+};
+
 export type Finding = {
   category: string;
   title: string;
@@ -34,6 +40,13 @@ export async function fetchRuns(limit = 20): Promise<RunRow[]> {
   if (!res.ok) throw new Error(`MASAT /runs failed: ${res.status}`);
   const data = await res.json();
   return data.runs || [];
+}
+
+export async function fetchRun(id: number): Promise<RunDetail> {
+  const res = await fetch(`${baseUrl()}/runs/${id}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`MASAT /runs/${id} failed: ${res.status}`);
+  const data = await res.json();
+  return data.run as RunDetail;
 }
 
 export async function runScan(params: {
