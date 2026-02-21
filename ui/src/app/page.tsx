@@ -72,9 +72,9 @@ export default async function Home() {
       <KpiRow
         items={[
           { label: "Targets", value: totalTargets },
-          { label: "Changed", value: changedTargets, meta: "based on last 2 runs" },
-          { label: "Runs loaded", value: runs.length },
-          { label: "API", value: "Connected", meta: process.env.NEXT_PUBLIC_MASAT_API_BASE || "127.0.0.1:8000" },
+          { label: "Changed", value: changedTargets, meta: "last 2 runs" },
+          { label: "New ports", value: totalNewPorts, meta: "added exposures" },
+          { label: "New findings", value: totalNewFindings, meta: "all severities" },
         ]}
       />
 

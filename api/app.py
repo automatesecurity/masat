@@ -65,11 +65,15 @@ class SeedRequest(BaseModel):
     domain: str
     use_ct: bool = True
     use_common: bool = True
+    use_live_tls: bool = False
     resolve: bool = True
     max_hosts: int = 500
     max_dns_lookups: int = 2000
     dns_concurrency: int = 50
-    store_assets: bool = True
+
+
+class AssetsImportRequest(BaseModel):
+    assets: list[str]
     assets_db: str | None = None
     tags: list[str] = ["seeded"]
     owner: str = ""
@@ -96,37 +100,43 @@ async def seed(req: SeedRequest) -> dict[str, Any]:
         domain,
         use_crtsh=bool(req.use_ct),
         use_common_prefixes=bool(req.use_common),
+        use_live_tls=bool(req.use_live_tls),
         resolve=bool(req.resolve),
         max_hosts=int(req.max_hosts),
         max_dns_lookups=int(req.max_dns_lookups),
         dns_concurrency=int(req.dns_concurrency),
     )
 
-    stored = 0
-    if req.store_assets:
-        db_path = req.assets_db or default_assets_db_path()
-        now = int(time.time())
-        for a in assets:
-            tags = list(req.tags or [])
-            tags.append(f"src:{a.source}")
-            upsert_asset(
-                db_path,
-                Asset(
-                    kind="host",
-                    value=a.hostname,
-                    tags=tags,
-                    owner=req.owner,
-                    environment=req.environment,
-                    ts=now,
-                ),
-            )
-            stored += 1
-
     return {
         "domain": domain,
         "assets": [a.to_dict() for a in assets],
-        "stored": stored,
     }
+
+
+@app.post("/assets/import")
+def assets_import(req: AssetsImportRequest) -> dict[str, Any]:
+    db_path = req.assets_db or default_assets_db_path()
+    now = int(time.time())
+
+    assets = [a.strip() for a in (req.assets or []) if a and a.strip()]
+    assets = assets[:5000]
+
+    stored = 0
+    for v in assets:
+        upsert_asset(
+            db_path,
+            Asset(
+                kind="host",
+                value=v,
+                tags=list(req.tags or []),
+                owner=req.owner,
+                environment=req.environment,
+                ts=now,
+            ),
+        )
+        stored += 1
+
+    return {"stored": stored}
 
 
 @app.post("/scan")

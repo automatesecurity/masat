@@ -9,6 +9,8 @@ This is intentionally conservative: it is *not* brute-force by default.
 from __future__ import annotations
 
 import asyncio
+import socket
+import ssl
 from dataclasses import dataclass, asdict
 from typing import Iterable
 
@@ -118,12 +120,71 @@ async def resolve_hostnames(
     return resolved
 
 
+def _tls_san_names(hostname: str, *, timeout_s: float = 3.0) -> list[str]:
+    """Best-effort TLS certificate SAN extraction (stdlib only).
+
+    Returns DNS names from subjectAltName if we can complete a handshake.
+    """
+
+    h = _normalize_hostname(hostname)
+    if not h:
+        return []
+
+    ctx = ssl.create_default_context()
+    # We are mining cert names; verification isn't the goal.
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    try:
+        with socket.create_connection((h, 443), timeout=timeout_s) as sock:
+            with ctx.wrap_socket(sock, server_hostname=h) as ssock:
+                cert = ssock.getpeercert() or {}
+    except Exception:
+        return []
+
+    out: list[str] = []
+    for entry in cert.get("subjectAltName", []) or []:
+        try:
+            k, v = entry
+        except Exception:
+            continue
+        if str(k).lower() != "dns":
+            continue
+        n = _normalize_hostname(str(v))
+        if n:
+            out.append(n)
+
+    return sorted(set(out))
+
+
+async def expand_via_live_tls(
+    hostnames: Iterable[str],
+    *,
+    concurrency: int = 20,
+    max_hosts: int = 150,
+) -> list[str]:
+    sem = asyncio.Semaphore(max(1, int(concurrency)))
+    hn = [h for h in (_normalize_hostname(x) for x in hostnames) if h][: max(0, int(max_hosts))]
+
+    found: set[str] = set()
+
+    async def run_one(h: str) -> None:
+        async with sem:
+            names = await asyncio.to_thread(_tls_san_names, h)
+        for n in names:
+            found.add(n)
+
+    await asyncio.gather(*(run_one(h) for h in hn))
+    return sorted(found)
+
+
 async def expand_domain(
     domain: str,
     *,
     include_input: bool = True,
     use_crtsh: bool = True,
     use_common_prefixes: bool = False,
+    use_live_tls: bool = False,
     common_prefixes: list[str] | None = None,
     resolve: bool = True,
     max_hosts: int = 500,
@@ -173,6 +234,19 @@ async def expand_domain(
             if not p2:
                 continue
             names.append((f"{p2}.{d}", "common"))
+
+    if use_live_tls:
+        # Mine SANs from live TLS endpoints we already discovered.
+        # Keep this small and fast; best-effort only.
+        seed_hosts = [n for n, _ in names][:150]
+        try:
+            tls_names = await expand_via_live_tls(seed_hosts, concurrency=min(20, int(dns_concurrency)))
+        except Exception:
+            tls_names = []
+
+        for n in tls_names:
+            if n == d or n.endswith("." + d):
+                names.append((n, "tls"))
 
     # Dedupe with stable ordering.
     seen: set[str] = set()
