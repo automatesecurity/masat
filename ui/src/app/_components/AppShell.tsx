@@ -28,16 +28,16 @@ export default function AppShell({
 
         <nav className={styles.nav} aria-label="Primary">
           <Link
-            className={`${styles.navItem} ${active === "scan" ? styles.navItemActive : ""}`}
+            className={`${styles.navItem} ${active === "changes" ? styles.navItemActive : ""}`}
             href="/"
           >
-            Scan
+            Changes
           </Link>
           <Link
-            className={`${styles.navItem} ${active === "changes" ? styles.navItemActive : ""}`}
-            href="/changes"
+            className={`${styles.navItem} ${active === "scan" ? styles.navItemActive : ""}`}
+            href="/scan"
           >
-            Changes
+            Scan
           </Link>
           <Link
             className={`${styles.navItem} ${active === "runs" ? styles.navItemActive : ""}`}
