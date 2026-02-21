@@ -31,18 +31,30 @@ export default async function Home() {
   const targets = Array.from(new Set(runs.map((r) => r.target))).slice(0, 20);
 
   const diffs = await Promise.all(targets.map((t) => fetchDiff(t)));
-  const rows = targets
+  const rowsAll = targets
     .map((t, idx) => ({ target: t, diff: diffs[idx] }))
     .filter((x) => x.diff) as { target: string; diff: DiffSummary }[];
 
-  // quick KPIs
+  const rowsChanged = rowsAll
+    .map((r) => {
+      const d = r.diff;
+      const portsAdded = d.exposure?.added_ports?.length || 0;
+      const portsRemoved = d.exposure?.removed_ports?.length || 0;
+      const newFindings = (d.new_findings || []).length;
+      const resolvedFindings = (d.resolved_findings || []).length;
+      const serverChanged = Boolean(d.exposure?.server_header);
+      const changeScore = portsAdded * 5 + portsRemoved * 2 + newFindings * 3 + resolvedFindings + (serverChanged ? 2 : 0);
+
+      return { ...r, portsAdded, portsRemoved, newFindings, resolvedFindings, serverChanged, changeScore };
+    })
+    .filter((r) => r.changeScore > 0)
+    .sort((a, b) => b.changeScore - a.changeScore);
+
+  // KPIs
   const totalTargets = targets.length;
-  const changedTargets = rows.filter((r) => {
-    const d = r.diff;
-    const ports = (d.exposure?.added_ports?.length || 0) + (d.exposure?.removed_ports?.length || 0);
-    const findings = (d.new_findings || []).length + (d.resolved_findings || []).length;
-    return ports + findings > 0 || Boolean(d.exposure?.server_header);
-  }).length;
+  const changedTargets = rowsChanged.length;
+  const totalNewPorts = rowsChanged.reduce((acc, r) => acc + r.portsAdded, 0);
+  const totalNewFindings = rowsChanged.reduce((acc, r) => acc + r.newFindings, 0);
 
   return (
     <AppShell
@@ -84,12 +96,7 @@ export default async function Home() {
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ target, diff }) => {
-                const added = diff.exposure?.added_ports?.length || 0;
-                const removed = diff.exposure?.removed_ports?.length || 0;
-                const nf = (diff.new_findings || []).length;
-                const rf = (diff.resolved_findings || []).length;
-
+              {rowsChanged.map(({ target, diff, portsAdded, portsRemoved, newFindings, resolvedFindings }) => {
                 return (
                   <tr key={target}>
                     <td>
@@ -99,16 +106,16 @@ export default async function Home() {
                       #{diff.old_run_id}→#{diff.new_run_id}
                     </td>
                     <td className={styles.meta}>
-                      +{added} / -{removed}
+                      +{portsAdded} / -{portsRemoved}
                     </td>
                     <td className={styles.meta}>
-                      +{nf} / -{rf}
+                      +{newFindings} / -{resolvedFindings}
                     </td>
                     <td>
                       <div className={styles.actions}>
-                        <a className={styles.actionLink} href={`/runs/${diff.new_run_id}`}>
+                        <Link className={styles.actionLink} href={`/runs/${diff.new_run_id}`}>
                           View run
-                        </a>
+                        </Link>
                         <a
                           className={styles.actionLink}
                           href={`${apiBase()}/diff?target=${encodeURIComponent(target)}&last=2&format=md`}
@@ -120,7 +127,7 @@ export default async function Home() {
                   </tr>
                 );
               })}
-              {rows.length === 0 ? (
+              {rowsChanged.length === 0 ? (
                 <tr>
                   <td colSpan={5} className={styles.meta}>
                     No diffs available yet. Run and store at least 2 scans for a target.
