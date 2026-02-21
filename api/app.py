@@ -351,14 +351,21 @@ async def seed(req: SeedRequest) -> dict[str, Any]:
 
 
 @app.get("/issues")
-def issues(limit: int = 30, offset: int = 0, status: str | None = None) -> dict[str, Any]:
+def issues(limit: int = 30, offset: int = 0, status: str | None = None, owner: str | None = None) -> dict[str, Any]:
     db_path = default_issues_db_path()
     lim = max(1, min(200, int(limit)))
     off = max(0, int(offset))
 
-    rows = [i.to_dict() for i in list_issues(db_path, limit=lim, offset=off, status=status)]
-    total = count_issues(db_path, status=status)
-    return {"issues": rows, "total": total, "limit": lim, "offset": off}
+    # Fetch and filter in-process for now (keeps storage simple).
+    items = [i.to_dict() for i in list_issues(db_path, limit=5000, offset=0, status=status)]
+    if owner:
+        o = owner.strip().lower()
+        items = [i for i in items if str(i.get("owner") or "").strip().lower() == o]
+
+    total = len(items)
+    page = items[off : off + lim]
+
+    return {"issues": page, "total": total, "limit": lim, "offset": off}
 
 
 @app.post("/issues/update")

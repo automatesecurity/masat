@@ -231,12 +231,16 @@ export async function fetchIssuesPage(params?: {
   limit?: number;
   offset?: number;
   status?: string;
+  owner?: string;
 }): Promise<Page<IssueRow>> {
   const limit = params?.limit ?? 30;
   const offset = params?.offset ?? 0;
-  const status = params?.status ? `&status=${encodeURIComponent(params.status)}` : "";
 
-  const res = await fetch(`${baseUrl()}/issues?limit=${limit}&offset=${offset}${status}`, { cache: "no-store" });
+  const sp = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (params?.status) sp.set("status", params.status);
+  if (params?.owner) sp.set("owner", params.owner);
+
+  const res = await fetch(`${baseUrl()}/issues?${sp.toString()}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`MASAT /issues failed: ${res.status}`);
   const data = await res.json();
   return {
