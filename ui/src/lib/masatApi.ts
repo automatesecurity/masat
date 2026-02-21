@@ -37,15 +37,27 @@ export type DashboardMetrics = {
   ts: number;
   total_assets: number;
   assets_by_env: Record<string, number>;
+
+  owned_assets: number;
+  assets_with_owner: number;
+  owner_coverage_pct: number;
+
   total_runs: number;
   runs_24h: number;
   runs_7d: number;
   latest_run_ts: number | null;
+
   targets_seen: number;
+  assets_scanned_7d: number;
+  coverage_7d_pct: number;
   assets_scanned_30d: number;
   coverage_30d_pct: number;
+  assets_never_scanned: number;
+  stale_assets_30d: number;
+
   findings_by_sev: Record<string, number>;
   open_ports_total: number;
+
   score: number;
   grade: string;
   score_categories: Record<string, number>;

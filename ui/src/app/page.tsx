@@ -175,18 +175,19 @@ export default async function DashboardPage() {
               items={[
                 { label: "Runs (24h)", value: m.runs_24h },
                 { label: "Runs (7d)", value: m.runs_7d },
-                { label: "Total runs", value: m.total_runs },
-                {
-                  label: "Targets seen",
-                  value: m.targets_seen,
-                  meta: m.latest_run_ts ? `latest run: ${new Date(m.latest_run_ts * 1000).toLocaleString()}` : "",
-                },
+                { label: "Coverage (7d)", value: `${m.coverage_7d_pct}%`, meta: `${m.assets_scanned_7d}/${m.total_assets}` },
+                { label: "Coverage (30d)", value: `${m.coverage_30d_pct}%`, meta: `${m.assets_scanned_30d}/${m.total_assets}` },
               ]}
             />
 
-            <div className={styles.meta} style={{ marginTop: 12 }}>
-              Assets scanned in 30 days: <strong>{m.assets_scanned_30d}</strong> / <strong>{m.total_assets}</strong>
-            </div>
+            <KpiRow
+              items={[
+                { label: "Owned/in-scope", value: m.owned_assets, meta: "tagged owned or in-scope" },
+                { label: "Owner coverage", value: `${m.owner_coverage_pct}%`, meta: `${m.assets_with_owner}/${m.total_assets}` },
+                { label: "Never scanned", value: m.assets_never_scanned, meta: "no stored runs" },
+                { label: "Stale (30d)", value: m.stale_assets_30d, meta: "no run in 30d" },
+              ]}
+            />
 
             <div className={styles.kv} style={{ fontFamily: "var(--font-sans)", background: "rgba(255,255,255,0.02)" }}>
               <div className={styles.sectionTitle} style={{ margin: 0 }}>
