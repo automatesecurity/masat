@@ -148,7 +148,7 @@ def main(argv: list[str] | None = None) -> int:
     if ns.cmd == "diff":
         import json
 
-        from utils.diffing import DiffResult, diff_findings
+        from utils.diffing import DiffResult, diff_exposure, diff_findings
         from utils.history import default_db_path, get_run, list_runs_for_target
 
         db_path = ns.db or default_db_path()
@@ -167,12 +167,14 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
         added, resolved = diff_findings(old_run.get("findings", []), new_run.get("findings", []))
+        exposure = diff_exposure(old_run.get("results", {}) or {}, new_run.get("results", {}) or {})
         out = DiffResult(
             target=ns.target,
             old_run_id=int(old_run["id"]),
             new_run_id=int(new_run["id"]),
             new_findings=added,
             resolved_findings=resolved,
+            exposure=exposure,
         )
 
         if ns.output == "json":
@@ -182,6 +184,17 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Diff target: {ns.target}")
         print(f"Old run: #{out.old_run_id}  New run: #{out.new_run_id}")
         print("")
+
+        if out.exposure.get("added_ports") or out.exposure.get("removed_ports") or out.exposure.get("server_header"):
+            print("Exposure changes:")
+            for p in out.exposure.get("added_ports", [])[:100]:
+                print(f"+ port {p}")
+            for p in out.exposure.get("removed_ports", [])[:100]:
+                print(f"- port {p}")
+            if out.exposure.get("server_header"):
+                sh = out.exposure["server_header"]
+                print(f"~ server header: {sh.get('old')} -> {sh.get('new')}")
+            print("")
 
         print(f"New findings: {len(out.new_findings)}")
         for f in out.new_findings[:50]:
