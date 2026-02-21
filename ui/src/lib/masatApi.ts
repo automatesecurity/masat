@@ -33,6 +33,22 @@ export type ScanResponse = {
   findings: Finding[];
 };
 
+export type DashboardMetrics = {
+  ts: number;
+  total_assets: number;
+  assets_by_env: Record<string, number>;
+  total_runs: number;
+  runs_24h: number;
+  runs_7d: number;
+  latest_run_ts: number | null;
+  targets_seen: number;
+  assets_scanned_30d: number;
+  coverage_30d_pct: number;
+  findings_by_sev: Record<string, number>;
+  open_ports_total: number;
+  score: number;
+};
+
 function baseUrl() {
   return process.env.NEXT_PUBLIC_MASAT_API_BASE || "http://127.0.0.1:8000";
 }
@@ -90,6 +106,13 @@ export async function fetchRun(id: number): Promise<RunDetail> {
   if (!res.ok) throw new Error(`MASAT /runs/${id} failed: ${res.status}`);
   const data = await res.json();
   return data.run as RunDetail;
+}
+
+export async function fetchDashboard(): Promise<DashboardMetrics> {
+  const res = await fetch(`${baseUrl()}/dashboard`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`MASAT /dashboard failed: ${res.status}`);
+  const data = await res.json();
+  return data.metrics as DashboardMetrics;
 }
 
 export async function runScan(params: {

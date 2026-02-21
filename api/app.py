@@ -30,8 +30,9 @@ from utils.targets import parse_target
 from utils.workflows import plan_scans
 from utils.schema import normalize_findings
 from utils.expand import expand_domain
-from utils.history import default_db_path, store_run, list_runs, count_runs, get_run
+from utils.history import default_db_path, store_run, list_runs, count_runs, count_runs_since, list_latest_runs_per_target, get_run
 from utils.assets import default_assets_db_path, list_assets, count_assets, upsert_asset, Asset
+from utils.dashboard import build_dashboard_metrics
 
 
 app = FastAPI(title="MASAT API", version="0.1")
@@ -83,6 +84,49 @@ class AssetsImportRequest(BaseModel):
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/dashboard")
+def dashboard() -> dict[str, Any]:
+    """Return high-level dashboard metrics.
+
+    This endpoint intentionally returns a single aggregated object so the UI can
+    render an enterprise-style dashboard without multiple round trips.
+    """
+
+    assets_db = default_assets_db_path()
+    runs_db = default_db_path()
+
+    assets_total = count_assets(assets_db)
+    # For now, we load at most 5000 assets for metrics breakdown.
+    assets_rows = [a.to_dict() for a in list_assets(assets_db, limit=min(5000, max(30, assets_total)), offset=0)]
+
+    total_runs = count_runs(runs_db)
+    now = int(time.time())
+    runs_24h = count_runs_since(runs_db, now - 24 * 3600)
+    runs_7d = count_runs_since(runs_db, now - 7 * 24 * 3600)
+
+    latest_runs = list_latest_runs_per_target(runs_db, limit_targets=300)
+
+    # Load details for latest runs (cap to keep it snappy)
+    run_details_by_id: dict[int, dict[str, Any]] = {}
+    for r in latest_runs[:200]:
+        rid = int(r.get("id") or 0)
+        if rid:
+            d = get_run(runs_db, rid)
+            if d:
+                run_details_by_id[rid] = d
+
+    metrics = build_dashboard_metrics(
+        assets=assets_rows,
+        latest_runs=latest_runs,
+        run_details_by_id=run_details_by_id,
+        total_runs=total_runs,
+        runs_24h=runs_24h,
+        runs_7d=runs_7d,
+    )
+
+    return {"metrics": metrics.to_dict()}
 
 
 @app.get("/scans")

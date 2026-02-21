@@ -38,7 +38,7 @@ export default async function ChangesPage() {
     <AppShell
       active="changes"
       title="Changes"
-      subtitle="EASM drift dashboard (last two runs per target)."
+      subtitle="Drift across the last two stored runs per target."
       pills={
         <>
           <span className={styles.pill}>Targets: {targets.length}</span>
