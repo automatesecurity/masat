@@ -46,48 +46,30 @@ export default async function DashboardPage() {
         <>
           <KpiRow
             items={[
-              { label: "Posture score", value: `${m.score}/100`, meta: "weighted" },
+              {
+                label: "Posture score",
+                value: `${m.score}/100`,
+                meta: "weighted",
+                infoTitle: "How score is calculated",
+                infoBody: `Category scores (0–100) are combined using weights.\n\n${Object.entries(m.score_categories || {})
+                  .map(([k, v]) => `${k}: ${v} (w=${m.score_weights?.[k] ?? "—"})`)
+                  .join("\n")}\n\nHeuristic model; will be tuned as MASAT adds more signals.`,
+              },
               { label: "Total assets", value: m.total_assets },
               { label: "Coverage", value: `${m.coverage_30d_pct}%`, meta: "assets scanned in 30d" },
               { label: "Open ports", value: m.open_ports_total, meta: "latest evidence" },
             ]}
           />
 
-          <section className={styles.card}>
-            <div className={styles.cardHeader}>
-              <div className={styles.sectionTitle}>Score breakdown</div>
-              <div className={styles.meta}>Category scores (0–100) with weights.</div>
-            </div>
-
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Category</th>
-                    <th style={{ width: 140 }}>Score</th>
-                    <th style={{ width: 120 }}>Weight</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(m.score_categories || {}).map(([k, v]) => (
-                    <tr key={k}>
-                      <td>
-                        <strong>{k}</strong>
-                      </td>
-                      <td className={styles.meta}>{v}</td>
-                      <td className={styles.meta}>{m.score_weights?.[k] ?? "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {narrative.length ? (
-              <div className={styles.meta} style={{ marginTop: 12 }}>
-                <strong>What changed:</strong> {narrative.join(" ")}
+          {narrative.length ? (
+            <section className={styles.card}>
+              <div className={styles.cardHeader}>
+                <div className={styles.sectionTitle}>What changed</div>
+                <div className={styles.meta}>Compared to 7 days ago.</div>
               </div>
-            ) : null}
-          </section>
+              <div className={styles.meta}>{narrative.join(" ")}</div>
+            </section>
+          ) : null}
 
           <section className={styles.card}>
             <div className={styles.cardHeader}>
