@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "MASAT Portal (Prototype)",
-  description: "UI prototype for MASAT",
+  title: "MASAT Portal",
+  description: "MASAT UI portal",
 };
 
 export default function RootLayout({
@@ -12,7 +12,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <div id="__app">{children}</div>
+      </body>
     </html>
   );
 }
