@@ -88,7 +88,12 @@ masat scan https://example.com --smart --store --output json > run.json
 masat diff https://example.com
 ```
 
-5) **Browse** results in the UI:
+5) **Scope-check** a target before scanning:
+```bash
+masat scope check https://example.com --allow-domain example.com
+```
+
+6) **Browse** results in the UI:
 ```bash
 pip install -e ".[api]"
 masat serve --reload
