@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ReactNode } from "react";
 import styles from "./appShell.module.css";
+import { Icon } from "./icons";
 
 export default function AppShell({
   active,
@@ -31,25 +32,37 @@ export default function AppShell({
             className={`${styles.navItem} ${active === "changes" ? styles.navItemActive : ""}`}
             href="/"
           >
-            Changes
+            <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+              <Icon name="changes" />
+              Changes
+            </span>
           </Link>
           <Link
             className={`${styles.navItem} ${active === "scan" ? styles.navItemActive : ""}`}
             href="/scan"
           >
-            Scan
+            <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+              <Icon name="scan" />
+              Scan
+            </span>
           </Link>
           <Link
             className={`${styles.navItem} ${active === "runs" ? styles.navItemActive : ""}`}
             href="/runs"
           >
-            Runs
+            <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+              <Icon name="runs" />
+              Runs
+            </span>
           </Link>
           <Link
             className={`${styles.navItem} ${active === "assets" ? styles.navItemActive : ""}`}
             href="/assets"
           >
-            Assets
+            <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+              <Icon name="assets" />
+              Assets
+            </span>
           </Link>
         </nav>
       </aside>
