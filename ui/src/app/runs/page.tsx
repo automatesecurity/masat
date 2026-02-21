@@ -42,8 +42,8 @@ export default async function RunsPage({
   return (
     <AppShell
       active="runs"
-      title="Runs"
-      subtitle="Browse stored scan runs. Filter by target or scan type, drill in for findings, and export." 
+      title="Evidence"
+      subtitle="Raw evidence collected over time. Most users should start with Dashboard → Issues → Assets." 
       pills={
         <>
           <span className={styles.pill}>Total: {runsPage.total}</span>
@@ -119,7 +119,7 @@ export default async function RunsPage({
                 <th style={{ width: 86 }}>Run</th>
                 <th>Target</th>
                 <th style={{ width: 210 }}>Time</th>
-                <th>Scans</th>
+                <th>Methodology</th>
                 <th style={{ width: 260 }}>Actions</th>
               </tr>
             </thead>
@@ -131,7 +131,12 @@ export default async function RunsPage({
                   </td>
                   <td>{r.target}</td>
                   <td>{new Date(r.ts * 1000).toLocaleString()}</td>
-                  <td className={styles.meta}>{r.scans.join(", ")}</td>
+                  <td className={styles.meta}>
+                    <details>
+                      <summary className={styles.meta}>Show</summary>
+                      <div style={{ marginTop: 6 }}>{r.scans.join(", ") || "(none)"}</div>
+                    </details>
+                  </td>
                   <td>
                     <div className={styles.actions}>
                       <a className={styles.actionLink} href={`/runs/${r.id}`}>

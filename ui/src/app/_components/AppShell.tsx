@@ -52,7 +52,7 @@ export default function AppShell({
           >
             <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
               <Icon name="scan" />
-              Scan
+              Assess
             </span>
           </Link>
           <Link
@@ -70,7 +70,7 @@ export default function AppShell({
           >
             <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
               <Icon name="runs" />
-              Runs
+              Evidence
             </span>
           </Link>
           <Link
