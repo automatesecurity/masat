@@ -30,8 +30,8 @@ from utils.targets import parse_target
 from utils.workflows import plan_scans
 from utils.schema import normalize_findings
 from utils.expand import expand_domain
-from utils.history import default_db_path, store_run, list_runs, get_run
-from utils.assets import default_assets_db_path, list_assets, upsert_asset, Asset
+from utils.history import default_db_path, store_run, list_runs, count_runs, get_run
+from utils.assets import default_assets_db_path, list_assets, count_assets, upsert_asset, Asset
 
 
 app = FastAPI(title="MASAT API", version="0.1")
@@ -172,9 +172,16 @@ async def scan(req: ScanRequest) -> dict[str, Any]:
 
 
 @app.get("/runs")
-def runs(limit: int = 20) -> dict[str, Any]:
+def runs(limit: int = 30, offset: int = 0) -> dict[str, Any]:
     db_path = default_db_path()
-    return {"runs": list_runs(db_path, limit=limit)}
+    lim = max(1, min(200, int(limit)))
+    off = max(0, int(offset))
+    return {
+        "runs": list_runs(db_path, limit=lim, offset=off),
+        "total": count_runs(db_path),
+        "limit": lim,
+        "offset": off,
+    }
 
 
 @app.get("/runs/{run_id}")
@@ -187,10 +194,12 @@ def run_detail(run_id: int) -> dict[str, Any]:
 
 
 @app.get("/assets")
-def assets(limit: int = 200) -> dict[str, Any]:
+def assets(limit: int = 30, offset: int = 0) -> dict[str, Any]:
     db_path = default_assets_db_path()
-    rows = [a.to_dict() for a in list_assets(db_path, limit=limit)]
-    return {"assets": rows}
+    lim = max(1, min(500, int(limit)))
+    off = max(0, int(offset))
+    rows = [a.to_dict() for a in list_assets(db_path, limit=lim, offset=off)]
+    return {"assets": rows, "total": count_assets(db_path), "limit": lim, "offset": off}
 
 
 @app.get("/runs/{run_id}/report")

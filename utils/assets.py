@@ -91,13 +91,24 @@ def upsert_asset(db_path: str, asset: Asset) -> None:
         conn.close()
 
 
-def list_assets(db_path: str, limit: int = 200) -> list[Asset]:
+def count_assets(db_path: str) -> int:
+    conn = _connect(db_path)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(1) FROM assets")
+        row = cur.fetchone()
+        return int(row[0] or 0) if row else 0
+    finally:
+        conn.close()
+
+
+def list_assets(db_path: str, limit: int = 200, offset: int = 0) -> list[Asset]:
     conn = _connect(db_path)
     try:
         cur = conn.cursor()
         cur.execute(
-            "SELECT ts, kind, value, tags, owner, environment FROM assets ORDER BY value ASC LIMIT ?",
-            (int(limit),),
+            "SELECT ts, kind, value, tags, owner, environment FROM assets ORDER BY value ASC LIMIT ? OFFSET ?",
+            (int(limit), int(offset)),
         )
         rows = cur.fetchall()
         out: list[Asset] = []

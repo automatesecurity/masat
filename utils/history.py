@@ -71,11 +71,25 @@ def store_run(db_path: str, target: str, scans: list[str], results: dict[str, An
         conn.close()
 
 
-def list_runs(db_path: str, limit: int = 20) -> list[dict[str, Any]]:
+def count_runs(db_path: str) -> int:
     conn = _connect(db_path)
     try:
         cur = conn.cursor()
-        cur.execute("SELECT id, ts, target, scans FROM runs ORDER BY id DESC LIMIT ?", (limit,))
+        cur.execute("SELECT COUNT(1) FROM runs")
+        row = cur.fetchone()
+        return int(row[0] or 0) if row else 0
+    finally:
+        conn.close()
+
+
+def list_runs(db_path: str, limit: int = 20, offset: int = 0) -> list[dict[str, Any]]:
+    conn = _connect(db_path)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, ts, target, scans FROM runs ORDER BY id DESC LIMIT ? OFFSET ?",
+            (int(limit), int(offset)),
+        )
         rows = cur.fetchall()
         return [
             {"id": r[0], "ts": r[1], "target": r[2], "scans": json.loads(r[3]) if r[3] else []}
