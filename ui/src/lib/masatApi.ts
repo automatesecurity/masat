@@ -1,6 +1,15 @@
 export type Scan = { id: string; description?: string };
 export type RunRow = { id: number; ts: number; target: string; scans: string[] };
 
+export type AssetRow = {
+  kind: string;
+  value: string;
+  tags: string[];
+  owner: string;
+  environment: string;
+  ts: number;
+};
+
 export type RunDetail = RunRow & {
   // API shape from GET /runs/{id}
   results: unknown;
@@ -40,6 +49,13 @@ export async function fetchRuns(limit = 20): Promise<RunRow[]> {
   if (!res.ok) throw new Error(`MASAT /runs failed: ${res.status}`);
   const data = await res.json();
   return data.runs || [];
+}
+
+export async function fetchAssets(limit = 200): Promise<AssetRow[]> {
+  const res = await fetch(`${baseUrl()}/assets?limit=${limit}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`MASAT /assets failed: ${res.status}`);
+  const data = await res.json();
+  return data.assets || [];
 }
 
 export async function fetchRun(id: number): Promise<RunDetail> {
