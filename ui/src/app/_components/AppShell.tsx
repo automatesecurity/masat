@@ -9,7 +9,7 @@ export default function AppShell({
   pills,
   children,
 }: {
-  active: "scan" | "runs" | "assets";
+  active: "scan" | "runs" | "assets" | "changes";
   title: string;
   subtitle?: string;
   pills?: ReactNode;
@@ -32,6 +32,12 @@ export default function AppShell({
             href="/"
           >
             Scan
+          </Link>
+          <Link
+            className={`${styles.navItem} ${active === "changes" ? styles.navItemActive : ""}`}
+            href="/changes"
+          >
+            Changes
           </Link>
           <Link
             className={`${styles.navItem} ${active === "runs" ? styles.navItemActive : ""}`}
