@@ -1,5 +1,6 @@
 import AppShell from "@/app/_components/AppShell";
 import styles from "@/app/_components/appShell.module.css";
+import { KpiRow } from "@/app/_components/KpiRow";
 import { fetchRuns } from "@/lib/masatApi";
 import Link from "next/link";
 
@@ -56,6 +57,15 @@ export default async function Home() {
         </>
       }
     >
+      <KpiRow
+        items={[
+          { label: "Targets", value: totalTargets },
+          { label: "Changed", value: changedTargets, meta: "based on last 2 runs" },
+          { label: "Runs loaded", value: runs.length },
+          { label: "API", value: "Connected", meta: process.env.NEXT_PUBLIC_MASAT_API_BASE || "127.0.0.1:8000" },
+        ]}
+      />
+
       <section className={styles.card}>
         <div className={styles.cardHeader}>
           <div className={styles.sectionTitle}>Drift summary</div>
