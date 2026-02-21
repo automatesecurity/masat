@@ -2,7 +2,7 @@ import os
 import tempfile
 
 from utils.history import store_run, get_run, list_runs_for_target
-from utils.diffing import diff_findings
+from utils.diffing import diff_exposure, diff_findings
 
 
 def test_diff_findings_added_and_resolved():
@@ -18,6 +18,35 @@ def test_diff_findings_added_and_resolved():
     added, resolved = diff_findings(old, new)
     assert [f["title"] for f in added] == ["d"]
     assert [f["title"] for f in resolved] == ["a"]
+
+
+def test_exposure_diff_ports_and_server_header():
+    old_results = {
+        "Nmap Scan": {
+            "\nOpen Ports": {
+                "details": "Port  Service  Version\n----  -------  -------\n22/tcp  ssh  OpenSSH\n80/tcp  http  Apache\n"
+            }
+        },
+        "Web Server Technology": {
+            "Detected Server": {"details": "Server header: Apache"}
+        },
+    }
+    new_results = {
+        "Nmap Scan": {
+            "\nOpen Ports": {
+                "details": "Port  Service  Version\n----  -------  -------\n22/tcp  ssh  OpenSSH\n443/tcp  https  nginx\n"
+            }
+        },
+        "Web Server Technology": {
+            "Detected Server": {"details": "Server header: nginx"}
+        },
+    }
+
+    exposure = diff_exposure(old_results, new_results)
+    assert "80/tcp http" in exposure["removed_ports"]
+    assert "443/tcp https" in exposure["added_ports"]
+    assert exposure["server_header"]["old"] == "Apache"
+    assert exposure["server_header"]["new"] == "nginx"
 
 
 def test_history_get_run_and_list_runs_for_target():
