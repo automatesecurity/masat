@@ -15,6 +15,7 @@ from dataclasses import dataclass, asdict
 from typing import Any
 
 from utils.targets import parse_target
+from utils.ports_risk import port_risk_weight
 
 
 _SEV_BUCKETS = [
@@ -72,26 +73,26 @@ def _score_from_buckets(b: dict[str, int]) -> int:
     return max(0, min(100, 100 - penalty))
 
 
-def _score_exposed_services(open_ports_total: int, assets_scanned_30d: int) -> int:
+def _score_exposed_services(exposure_risk_points: int, assets_scanned_30d: int) -> int:
     """0-100 score for exposed services.
 
-    Uses open port count as a coarse proxy. We normalize by assets_scanned_30d
-    to avoid penalizing large inventories too much.
+    Uses weighted open-port risk points as a proxy. We normalize by
+    assets_scanned_30d to avoid penalizing large inventories too much.
     """
 
     denom = max(1, int(assets_scanned_30d))
-    ports_per_asset = float(open_ports_total) / float(denom)
+    points_per_asset = float(exposure_risk_points) / float(denom)
 
     # Heuristic thresholds.
-    if ports_per_asset <= 0.5:
+    if points_per_asset <= 0.6:
         return 95
-    if ports_per_asset <= 1.0:
+    if points_per_asset <= 1.2:
         return 88
-    if ports_per_asset <= 2.0:
+    if points_per_asset <= 2.4:
         return 78
-    if ports_per_asset <= 4.0:
+    if points_per_asset <= 4.8:
         return 62
-    if ports_per_asset <= 7.0:
+    if points_per_asset <= 8.0:
         return 45
     return 30
 
@@ -182,6 +183,7 @@ class DashboardMetrics:
     # risk/exposure
     findings_by_sev: dict[str, int]
     open_ports_total: int
+    exposure_risk_points: int
 
     # scoring
     score: int
@@ -232,6 +234,7 @@ def build_dashboard_metrics(
 
     findings_by_sev: dict[str, int] = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
     open_ports_total = 0
+    exposure_risk_points = 0
 
     scanned_any: set[str] = set()
     scanned_7d: set[str] = set()
@@ -265,7 +268,24 @@ def build_dashboard_metrics(
 
         results = detail.get("results") or {}
         if isinstance(results, dict):
+            # Count ports for display, but compute weighted exposure points for scoring.
             open_ports_total += _count_open_ports(results)
+
+            try:
+                nmap = results.get("Nmap Scan") or {}
+                open_ports = nmap.get("\nOpen Ports") or nmap.get("Open Ports") or {}
+                details_txt = open_ports.get("details")
+                if isinstance(details_txt, str):
+                    for line in details_txt.splitlines():
+                        s = line.strip()
+                        if not s or s.lower().startswith("port"):
+                            continue
+                        # If line starts with 22/tcp
+                        if "/tcp" in s:
+                            port = s.split()[0]
+                            exposure_risk_points += port_risk_weight(port)
+            except Exception:
+                pass
 
     def intersect_count(scanned: set[str]) -> int:
         return sum(1 for h in scanned if h in asset_hosts)
@@ -283,7 +303,7 @@ def build_dashboard_metrics(
 
     # Category scores (0-100)
     score_vuln = _score_from_buckets(findings_by_sev)
-    score_exposure = _score_exposed_services(open_ports_total, assets_scanned_30d)
+    score_exposure = _score_exposed_services(exposure_risk_points, assets_scanned_30d)
     score_cov = _score_coverage(coverage_30d_pct)
     score_act = _score_activity(runs_7d)
 
@@ -326,6 +346,7 @@ def build_dashboard_metrics(
         stale_assets_30d=int(stale_assets_30d),
         findings_by_sev=findings_by_sev,
         open_ports_total=int(open_ports_total),
+        exposure_risk_points=int(exposure_risk_points),
         score=int(score),
         grade=_grade(int(score)),
         score_categories={
