@@ -56,6 +56,9 @@ export default async function DashboardPage() {
             />
 
             <div className={styles.actions} style={{ marginTop: 12 }}>
+              <a className={styles.actionLink} href="/onboarding">
+                Onboarding
+              </a>
               <a className={styles.actionLink} href="/changes">
                 View drift (Changes)
               </a>
@@ -105,7 +108,9 @@ export default async function DashboardPage() {
                     ))}
                   </>
                 ) : (
-                  <>No assets inventory yet. Use Seeding to discover assets and import them.</>
+                  <>
+                    No assets inventory yet. Start with onboarding to seed and confirm in-scope assets: <a className={styles.actionLink} href="/onboarding">Run onboarding</a>
+                  </>
                 )}
               </div>
             </div>
