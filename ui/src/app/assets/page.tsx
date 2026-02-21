@@ -106,6 +106,7 @@ export default async function AssetsPage({
                 <th style={{ width: 140 }}>Environment</th>
                 <th style={{ width: 160 }}>Owner</th>
                 <th>Tags</th>
+                <th style={{ width: 140 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -118,11 +119,21 @@ export default async function AssetsPage({
                   <td className={styles.meta}>{a.environment || ""}</td>
                   <td className={styles.meta}>{a.owner || ""}</td>
                   <td className={styles.meta}>{(a.tags || []).join(", ")}</td>
+                  <td>
+                    <div className={styles.actions}>
+                      <a className={styles.actionLink} href={`/scan?target=${encodeURIComponent(a.value)}`}>
+                        Scan
+                      </a>
+                      <a className={styles.actionLink} href={`/seed?domain=${encodeURIComponent(a.value)}`}>
+                        Seed
+                      </a>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className={styles.meta}>
+                  <td colSpan={6} className={styles.meta}>
                     No assets found. Import some with: <code>masat assets import assets.csv</code>
                   </td>
                 </tr>

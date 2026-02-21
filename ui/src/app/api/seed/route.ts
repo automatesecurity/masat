@@ -10,6 +10,7 @@ export async function POST(req: Request) {
         domain?: string;
         use_ct?: boolean;
         use_common?: boolean;
+        use_live_tls?: boolean;
         resolve?: boolean;
         max_hosts?: number;
       }
@@ -27,9 +28,9 @@ export async function POST(req: Request) {
       domain,
       use_ct: body?.use_ct ?? true,
       use_common: body?.use_common ?? true,
+      use_live_tls: body?.use_live_tls ?? false,
       resolve: body?.resolve ?? true,
       max_hosts: body?.max_hosts ?? 500,
-      store_assets: true,
     }),
   });
 
