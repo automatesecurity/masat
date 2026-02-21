@@ -127,6 +127,38 @@ def list_latest_runs_per_target(db_path: str, limit_targets: int = 200) -> list[
         conn.close()
 
 
+def list_latest_runs_per_target_asof(db_path: str, asof_ts: int, limit_targets: int = 200) -> list[dict[str, Any]]:
+    """Latest run per target as-of a timestamp (ts <= asof_ts)."""
+
+    conn = _connect(db_path)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT r.id, r.ts, r.target, r.scans
+            FROM runs r
+            INNER JOIN (
+              SELECT target, MAX(id) AS max_id
+              FROM runs
+              WHERE ts <= ?
+              GROUP BY target
+              ORDER BY max_id DESC
+              LIMIT ?
+            ) t
+            ON r.target = t.target AND r.id = t.max_id
+            ORDER BY r.id DESC
+            """,
+            (int(asof_ts), int(limit_targets)),
+        )
+        rows = cur.fetchall()
+        return [
+            {"id": r[0], "ts": r[1], "target": r[2], "scans": json.loads(r[3]) if r[3] else []}
+            for r in rows
+        ]
+    finally:
+        conn.close()
+
+
 def list_runs(db_path: str, limit: int = 20, offset: int = 0) -> list[dict[str, Any]]:
     conn = _connect(db_path)
     try:
@@ -145,14 +177,13 @@ def list_runs(db_path: str, limit: int = 20, offset: int = 0) -> list[dict[str, 
 
 
 def get_run(db_path: str, run_id: int) -> dict[str, Any] | None:
-    """Fetch a full run (including results + findings)."""
-
+    """Fetch a single run including stored results + findings."""
     conn = _connect(db_path)
     try:
         cur = conn.cursor()
         cur.execute(
             "SELECT id, ts, target, scans, results_json, findings_json FROM runs WHERE id = ?",
-            (run_id,),
+            (int(run_id),),
         )
         row = cur.fetchone()
         if not row:
@@ -212,29 +243,5 @@ def list_runs_matching_host(db_path: str, host: str, limit: int = 20) -> list[di
             {"id": r[0], "ts": r[1], "target": r[2], "scans": json.loads(r[3]) if r[3] else []}
             for r in rows
         ]
-    finally:
-        conn.close()
-
-
-def get_run(db_path: str, run_id: int) -> dict[str, Any] | None:
-    """Fetch a single run including stored results + findings."""
-    conn = _connect(db_path)
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT id, ts, target, scans, results_json, findings_json FROM runs WHERE id = ?",
-            (int(run_id),),
-        )
-        row = cur.fetchone()
-        if not row:
-            return None
-        return {
-            "id": row[0],
-            "ts": row[1],
-            "target": row[2],
-            "scans": json.loads(row[3]) if row[3] else [],
-            "results": json.loads(row[4]) if row[4] else {},
-            "findings": json.loads(row[5]) if row[5] else [],
-        }
     finally:
         conn.close()

@@ -8,10 +8,14 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const [m, topPorts] = await Promise.all([
+  const [dash, topPorts] = await Promise.all([
     fetchDashboard().catch(() => null),
     fetchTopExposedPorts(10).catch(() => []),
   ]);
+
+  const m = dash?.metrics || null;
+  const trend7d = dash?.trend?.asof7d || null;
+  const narrative = dash?.narrative || [];
 
   return (
     <AppShell
@@ -22,6 +26,12 @@ export default async function DashboardPage() {
         m ? (
           <>
             <span className={styles.pill}>Score: {m.score}/100</span>
+            {trend7d ? (
+              <span className={styles.pill}>
+                7d Δ: {m.score - trend7d.score >= 0 ? "+" : ""}
+                {m.score - trend7d.score}
+              </span>
+            ) : null}
             <span className={styles.pill}>Coverage (30d): {m.coverage_30d_pct}%</span>
             <span className={styles.pill}>Runs (7d): {m.runs_7d}</span>
           </>
@@ -36,12 +46,30 @@ export default async function DashboardPage() {
         <>
           <KpiRow
             items={[
-              { label: "Posture score", value: `${m.score}/100`, meta: "heuristic" },
+              {
+                label: "Posture score",
+                value: `${m.score}/100`,
+                meta: "weighted",
+                infoTitle: "How score is calculated",
+                infoBody: `Category scores (0–100) are combined using weights.\n\n${Object.entries(m.score_categories || {})
+                  .map(([k, v]) => `${k}: ${v} (w=${m.score_weights?.[k] ?? "—"})`)
+                  .join("\n")}\n\nHeuristic model; will be tuned as MASAT adds more signals.`,
+              },
               { label: "Total assets", value: m.total_assets },
               { label: "Coverage", value: `${m.coverage_30d_pct}%`, meta: "assets scanned in 30d" },
-              { label: "Open ports", value: m.open_ports_total, meta: "from latest scans" },
+              { label: "Open ports", value: m.open_ports_total, meta: "latest evidence" },
             ]}
           />
+
+          {narrative.length ? (
+            <section className={styles.card}>
+              <div className={styles.cardHeader}>
+                <div className={styles.sectionTitle}>What changed</div>
+                <div className={styles.meta}>Compared to 7 days ago.</div>
+              </div>
+              <div className={styles.meta}>{narrative.join(" ")}</div>
+            </section>
+          ) : null}
 
           <section className={styles.card}>
             <div className={styles.cardHeader}>
