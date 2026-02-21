@@ -14,6 +14,7 @@ Run:
 from __future__ import annotations
 
 import asyncio
+import time
 from typing import Any
 
 try:
@@ -28,8 +29,9 @@ from scanners.registry import discover_scanners
 from utils.targets import parse_target
 from utils.workflows import plan_scans
 from utils.schema import normalize_findings
+from utils.expand import expand_domain
 from utils.history import default_db_path, store_run, list_runs, get_run
-from utils.assets import default_assets_db_path, list_assets
+from utils.assets import default_assets_db_path, list_assets, upsert_asset, Asset
 
 
 app = FastAPI(title="MASAT API", version="0.1")
@@ -59,6 +61,21 @@ class ScanRequest(BaseModel):
     db: str | None = None
 
 
+class SeedRequest(BaseModel):
+    domain: str
+    use_ct: bool = True
+    use_common: bool = True
+    resolve: bool = True
+    max_hosts: int = 500
+    max_dns_lookups: int = 2000
+    dns_concurrency: int = 50
+    store_assets: bool = True
+    assets_db: str | None = None
+    tags: list[str] = ["seeded"]
+    owner: str = ""
+    environment: str = ""
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -68,6 +85,48 @@ def health() -> dict[str, str]:
 def scans() -> dict[str, Any]:
     reg = discover_scanners()
     return {"scans": [{"id": k, "description": v.description} for k, v in reg.items()]}
+
+
+@app.post("/seed")
+async def seed(req: SeedRequest) -> dict[str, Any]:
+    info = parse_target(req.domain)
+    domain = info.host or info.raw
+
+    assets = await expand_domain(
+        domain,
+        use_crtsh=bool(req.use_ct),
+        use_common_prefixes=bool(req.use_common),
+        resolve=bool(req.resolve),
+        max_hosts=int(req.max_hosts),
+        max_dns_lookups=int(req.max_dns_lookups),
+        dns_concurrency=int(req.dns_concurrency),
+    )
+
+    stored = 0
+    if req.store_assets:
+        db_path = req.assets_db or default_assets_db_path()
+        now = int(time.time())
+        for a in assets:
+            tags = list(req.tags or [])
+            tags.append(f"src:{a.source}")
+            upsert_asset(
+                db_path,
+                Asset(
+                    kind="host",
+                    value=a.hostname,
+                    tags=tags,
+                    owner=req.owner,
+                    environment=req.environment,
+                    ts=now,
+                ),
+            )
+            stored += 1
+
+    return {
+        "domain": domain,
+        "assets": [a.to_dict() for a in assets],
+        "stored": stored,
+    }
 
 
 @app.post("/scan")
