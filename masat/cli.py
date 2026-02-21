@@ -44,6 +44,12 @@ def main(argv: list[str] | None = None) -> int:
     expand.add_argument("--dns-concurrency", type=int, default=50, help="Max concurrent DNS resolutions")
     expand.add_argument("--output", choices=["text", "json", "csv"], default="text")
 
+    diff = sub.add_parser("diff", help="EASM: diff recent stored runs for a target")
+    diff.add_argument("target", help="Target to diff (must match stored target string)")
+    diff.add_argument("--last", type=int, default=2, help="How many recent runs to diff (default: 2)")
+    diff.add_argument("--db", default=None, help="SQLite DB path (default: ~/.masat/masat.db)")
+    diff.add_argument("--output", choices=["text", "json"], default="text")
+
     serve = sub.add_parser("serve", help="Run the MASAT API server (requires extras: api)")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", default="8000")
@@ -115,6 +121,61 @@ def main(argv: list[str] | None = None) -> int:
         for a in assets:
             ip_part = f" -> {', '.join(a.ips)}" if a.ips else ""
             print(f"{a.hostname}{ip_part} ({a.source})")
+        return 0
+
+    if ns.cmd == "diff":
+        import json
+
+        from utils.diffing import DiffResult, diff_findings
+        from utils.history import default_db_path, get_run, list_runs_for_target
+
+        db_path = ns.db or default_db_path()
+        runs = list_runs_for_target(db_path, ns.target, limit=max(2, int(ns.last)))
+        if len(runs) < 2:
+            print("Not enough stored runs to diff (need at least 2).")
+            return 1
+
+        new_meta = runs[0]
+        old_meta = runs[1]
+
+        new_run = get_run(db_path, int(new_meta["id"]))
+        old_run = get_run(db_path, int(old_meta["id"]))
+        if not new_run or not old_run:
+            print("Unable to load runs for diff.")
+            return 1
+
+        added, resolved = diff_findings(old_run.get("findings", []), new_run.get("findings", []))
+        out = DiffResult(
+            target=ns.target,
+            old_run_id=int(old_run["id"]),
+            new_run_id=int(new_run["id"]),
+            new_findings=added,
+            resolved_findings=resolved,
+        )
+
+        if ns.output == "json":
+            print(json.dumps(out.to_dict(), indent=2, sort_keys=True))
+            return 0
+
+        print(f"Diff target: {ns.target}")
+        print(f"Old run: #{out.old_run_id}  New run: #{out.new_run_id}")
+        print("")
+
+        print(f"New findings: {len(out.new_findings)}")
+        for f in out.new_findings[:50]:
+            print(f"+ [{f.get('severity', 0)}] {f.get('category')} :: {f.get('title')}")
+
+        if len(out.new_findings) > 50:
+            print(f"  ... ({len(out.new_findings) - 50} more)")
+
+        print("")
+        print(f"Resolved findings: {len(out.resolved_findings)}")
+        for f in out.resolved_findings[:50]:
+            print(f"- [{f.get('severity', 0)}] {f.get('category')} :: {f.get('title')}")
+
+        if len(out.resolved_findings) > 50:
+            print(f"  ... ({len(out.resolved_findings) - 50} more)")
+
         return 0
 
     if ns.cmd == "serve":

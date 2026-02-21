@@ -77,3 +77,70 @@ def list_runs(db_path: str, limit: int = 20) -> list[dict[str, Any]]:
         ]
     finally:
         conn.close()
+
+
+def get_run(db_path: str, run_id: int) -> dict[str, Any] | None:
+    """Fetch a full run (including results + findings)."""
+
+    conn = _connect(db_path)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, ts, target, scans, results_json, findings_json FROM runs WHERE id = ?",
+            (run_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+        return {
+            "id": row[0],
+            "ts": row[1],
+            "target": row[2],
+            "scans": json.loads(row[3]) if row[3] else [],
+            "results": json.loads(row[4]) if row[4] else {},
+            "findings": json.loads(row[5]) if row[5] else [],
+        }
+    finally:
+        conn.close()
+
+
+def list_runs_for_target(db_path: str, target: str, limit: int = 20) -> list[dict[str, Any]]:
+    """List recent runs for a specific target."""
+    conn = _connect(db_path)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, ts, target, scans FROM runs WHERE target = ? ORDER BY id DESC LIMIT ?",
+            (target, limit),
+        )
+        rows = cur.fetchall()
+        return [
+            {"id": r[0], "ts": r[1], "target": r[2], "scans": json.loads(r[3]) if r[3] else []}
+            for r in rows
+        ]
+    finally:
+        conn.close()
+
+
+def get_run(db_path: str, run_id: int) -> dict[str, Any] | None:
+    """Fetch a single run including stored results + findings."""
+    conn = _connect(db_path)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, ts, target, scans, results_json, findings_json FROM runs WHERE id = ?",
+            (int(run_id),),
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+        return {
+            "id": row[0],
+            "ts": row[1],
+            "target": row[2],
+            "scans": json.loads(row[3]) if row[3] else [],
+            "results": json.loads(row[4]) if row[4] else {},
+            "findings": json.loads(row[5]) if row[5] else [],
+        }
+    finally:
+        conn.close()
