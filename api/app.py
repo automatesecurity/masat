@@ -138,7 +138,7 @@ def dashboard() -> dict[str, Any]:
         runs_7d=runs_7d,
     )
 
-    # Trend snapshots (score as-of 7d and 30d)
+    # Trend snapshots (score as-of 7d/30d/90d)
     def snapshot(asof_ts: int) -> dict[str, Any] | None:
         runs = list_latest_runs_per_target_asof(runs_db, asof_ts, limit_targets=300)
         if not runs:
@@ -171,6 +171,7 @@ def dashboard() -> dict[str, Any]:
 
     snap_7d = snapshot(now - 7 * 24 * 3600)
     snap_30d = snapshot(now - 30 * 24 * 3600)
+    snap_90d = snapshot(now - 90 * 24 * 3600)
 
     narrative: list[str] = []
     if snap_7d:
@@ -190,7 +191,7 @@ def dashboard() -> dict[str, Any]:
 
     return {
         "metrics": metrics.to_dict(),
-        "trend": {"asof7d": snap_7d, "asof30d": snap_30d},
+        "trend": {"asof7d": snap_7d, "asof30d": snap_30d, "asof90d": snap_90d},
         "narrative": narrative,
     }
 

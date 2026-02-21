@@ -15,6 +15,8 @@ export default async function DashboardPage() {
 
   const m = dash?.metrics || null;
   const trend7d = dash?.trend?.asof7d || null;
+  const trend30d = dash?.trend?.asof30d || null;
+  const trend90d = dash?.trend?.asof90d || null;
   const narrative = dash?.narrative || [];
 
   return (
@@ -25,11 +27,25 @@ export default async function DashboardPage() {
       pills={
         m ? (
           <>
-            <span className={styles.pill}>Score: {m.score}/100</span>
+            <span className={styles.pill}>
+              Score: {m.score}/100 ({m.grade})
+            </span>
             {trend7d ? (
               <span className={styles.pill}>
                 7d Δ: {m.score - trend7d.score >= 0 ? "+" : ""}
                 {m.score - trend7d.score}
+              </span>
+            ) : null}
+            {trend30d ? (
+              <span className={styles.pill}>
+                30d Δ: {m.score - trend30d.score >= 0 ? "+" : ""}
+                {m.score - trend30d.score}
+              </span>
+            ) : null}
+            {trend90d ? (
+              <span className={styles.pill}>
+                90d Δ: {m.score - trend90d.score >= 0 ? "+" : ""}
+                {m.score - trend90d.score}
               </span>
             ) : null}
             <span className={styles.pill}>Coverage (30d): {m.coverage_30d_pct}%</span>

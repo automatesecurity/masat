@@ -126,6 +126,19 @@ def _score_activity(runs_7d: int) -> int:
     return 35
 
 
+def _grade(score: int) -> str:
+    s = max(0, min(100, int(score)))
+    if s >= 90:
+        return "A"
+    if s >= 80:
+        return "B"
+    if s >= 70:
+        return "C"
+    if s >= 60:
+        return "D"
+    return "F"
+
+
 def _weighted_score(parts: dict[str, tuple[int, int]]) -> int:
     """parts: name -> (score, weight)."""
 
@@ -163,6 +176,7 @@ class DashboardMetrics:
 
     # scoring
     score: int
+    grade: str
     score_categories: dict[str, int]
     score_weights: dict[str, int]
 
@@ -273,6 +287,7 @@ def build_dashboard_metrics(
         findings_by_sev=findings_by_sev,
         open_ports_total=int(open_ports_total),
         score=int(score),
+        grade=_grade(int(score)),
         score_categories={
             "vulnerability": int(score_vuln),
             "exposure": int(score_exposure),
