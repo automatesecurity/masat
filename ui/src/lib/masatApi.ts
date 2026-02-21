@@ -47,6 +47,7 @@ export type DashboardMetrics = {
   findings_by_sev: Record<string, number>;
   open_ports_total: number;
   score: number;
+  grade: string;
   score_categories: Record<string, number>;
   score_weights: Record<string, number>;
 };
@@ -62,7 +63,11 @@ export type DashboardSnapshot = {
 
 export type DashboardResponse = {
   metrics: DashboardMetrics;
-  trend: { asof7d: DashboardSnapshot | null; asof30d: DashboardSnapshot | null };
+  trend: {
+    asof7d: DashboardSnapshot | null;
+    asof30d: DashboardSnapshot | null;
+    asof90d: DashboardSnapshot | null;
+  };
   narrative: string[];
 };
 
