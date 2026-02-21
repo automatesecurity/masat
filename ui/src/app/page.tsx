@@ -3,6 +3,7 @@ import styles from "@/app/_components/appShell.module.css";
 import { KpiRow } from "@/app/_components/KpiRow";
 import SeverityBar from "@/app/_components/SeverityBar";
 import { fetchDashboard } from "@/lib/masatApi";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -56,18 +57,18 @@ export default async function DashboardPage() {
             />
 
             <div className={styles.actions} style={{ marginTop: 12 }}>
-              <a className={styles.actionLink} href="/onboarding">
+              <Link className={styles.actionLink} href="/onboarding">
                 Onboarding
-              </a>
-              <a className={styles.actionLink} href="/changes">
+              </Link>
+              <Link className={styles.actionLink} href="/changes">
                 View drift (Changes)
-              </a>
-              <a className={styles.actionLink} href="/assets">
+              </Link>
+              <Link className={styles.actionLink} href="/assets">
                 Review inventory
-              </a>
-              <a className={styles.actionLink} href="/scan">
+              </Link>
+              <Link className={styles.actionLink} href="/scan">
                 Run a scan
-              </a>
+              </Link>
             </div>
           </section>
 
@@ -109,7 +110,7 @@ export default async function DashboardPage() {
                   </>
                 ) : (
                   <>
-                    No assets inventory yet. Start with onboarding to seed and confirm in-scope assets: <a className={styles.actionLink} href="/onboarding">Run onboarding</a>
+                    No assets inventory yet. Start with onboarding to seed and confirm in-scope assets: <Link className={styles.actionLink} href="/onboarding">Run onboarding</Link>
                   </>
                 )}
               </div>

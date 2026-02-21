@@ -237,9 +237,9 @@ export default function SeedPage() {
           <a className={styles.actionLink} href={selectedHostnames.length ? `/scan?target=${encodeURIComponent(selectedHostnames[0])}` : "/scan"}>
             Scan a selected asset
           </a>
-          <a className={styles.actionLink} href="/assets">
+          <Link className={styles.actionLink} href="/assets">
             View asset inventory
-          </a>
+          </Link>
         </div>
 
         <div className={styles.tableWrap}>
@@ -294,9 +294,9 @@ export default function SeedPage() {
           <div className={styles.meta}>Seed → Assets → Scan → Runs → Changes</div>
         </div>
         <div className={styles.actions}>
-          <a className={styles.actionLink} href="/assets">
+          <Link className={styles.actionLink} href="/assets">
             Review imported assets
-          </a>
+          </Link>
           <a className={styles.actionLink} href="/scan">
             Create a stored scan
           </a>

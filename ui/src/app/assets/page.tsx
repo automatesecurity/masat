@@ -2,6 +2,7 @@ import AppShell from "@/app/_components/AppShell";
 import styles from "@/app/_components/appShell.module.css";
 import Pagination from "@/app/_components/Pagination";
 import { fetchAssetsPage, type AssetRow } from "@/lib/masatApi";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -79,15 +80,15 @@ export default async function AssetsPage({
         </div>
 
         <div className={styles.actions}>
-          <a className={styles.actionLink} href="/assets">
+          <Link className={styles.actionLink} href="/assets">
             All assets
-          </a>
-          <a className={styles.actionLink} href="/assets?view=prod">
+          </Link>
+          <Link className={styles.actionLink} href="/assets?view=prod">
             Prod
-          </a>
-          <a className={styles.actionLink} href="/assets?view=internet">
+          </Link>
+          <Link className={styles.actionLink} href="/assets?view=internet">
             Internet-facing
-          </a>
+          </Link>
         </div>
       </section>
 
@@ -139,7 +140,9 @@ export default async function AssetsPage({
                 <tr key={`${a.kind}:${a.value}`}>
                   <td className={styles.meta}>{a.kind}</td>
                   <td>
-                    <strong>{a.value}</strong>
+                    <Link className={styles.actionLink} href={`/assets/${encodeURIComponent(a.value)}`}>
+                      <strong>{a.value}</strong>
+                    </Link>
                   </td>
                   <td className={styles.meta}>{a.environment || ""}</td>
                   <td className={styles.meta}>{a.owner || ""}</td>

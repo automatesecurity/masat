@@ -30,9 +30,19 @@ from utils.targets import parse_target
 from utils.workflows import plan_scans
 from utils.schema import normalize_findings
 from utils.expand import expand_domain
-from utils.history import default_db_path, store_run, list_runs, count_runs, count_runs_since, list_latest_runs_per_target, get_run
+from utils.history import (
+    default_db_path,
+    store_run,
+    list_runs,
+    count_runs,
+    count_runs_since,
+    list_latest_runs_per_target,
+    list_runs_matching_host,
+    get_run,
+)
 from utils.assets import default_assets_db_path, list_assets, count_assets, upsert_asset, Asset
 from utils.dashboard import build_dashboard_metrics
+from utils.exposure import extract_open_ports_from_results
 
 
 app = FastAPI(title="MASAT API", version="0.1")
@@ -244,6 +254,54 @@ def assets(limit: int = 30, offset: int = 0) -> dict[str, Any]:
     off = max(0, int(offset))
     rows = [a.to_dict() for a in list_assets(db_path, limit=lim, offset=off)]
     return {"assets": rows, "total": count_assets(db_path), "limit": lim, "offset": off}
+
+
+@app.get("/asset")
+def asset(value: str) -> dict[str, Any]:
+    """Return asset detail + latest evidence we have.
+
+    - asset metadata from inventory (if present)
+    - latest matching stored run (best-effort)
+    - extracted exposure signals (e.g., open ports)
+    """
+
+    v = (value or "").strip()
+    if not v:
+        raise HTTPException(status_code=400, detail="Missing value")
+
+    assets_db = default_assets_db_path()
+    runs_db = default_db_path()
+
+    # Find the asset row (best-effort: scan current page; inventory is small in early MVP)
+    # If we don't find it, we still allow looking up run evidence.
+    asset_row = None
+    try:
+        all_assets = list_assets(assets_db, limit=5000, offset=0)
+        for a in all_assets:
+            if a.value.strip().lower() == v.lower():
+                asset_row = a.to_dict()
+                break
+    except Exception:
+        asset_row = None
+
+    # Find latest run for this asset.
+    host = parse_target(v).host or v
+    runs = list_runs_matching_host(runs_db, host, limit=1)
+    latest = runs[0] if runs else None
+
+    detail = None
+    open_ports: list[dict[str, str]] = []
+    if latest:
+        detail = get_run(runs_db, int(latest["id"]))
+        if detail and isinstance(detail.get("results"), dict):
+            open_ports = extract_open_ports_from_results(detail.get("results") or {})
+
+    return {
+        "asset": asset_row,
+        "latestRun": latest,
+        "runDetail": detail,
+        "openPorts": open_ports,
+    }
 
 
 @app.get("/runs/{run_id}/report")
