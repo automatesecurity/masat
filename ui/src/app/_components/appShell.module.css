@@ -1,7 +1,44 @@
+.shellWrap {
+  position: relative;
+}
+
 .shell {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 272px 1fr;
+}
+
+.navToggle {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Collapsed state (checkbox sits before .shell). */
+.navToggle:checked + .shell {
+  grid-template-columns: 76px 1fr;
+}
+
+.navToggle:checked + .shell .sidebar {
+  padding: 16px 10px;
+}
+
+.navToggle:checked + .shell .brandText,
+.navToggle:checked + .shell .collapseLabel,
+.navToggle:checked + .shell .navLabel {
+  display: none;
+}
+
+.navToggle:checked + .shell .collapseGlyph {
+  transform: rotate(180deg);
+}
+
+.navToggle:checked + .shell .navItem {
+  justify-content: center;
+}
+
+.navToggle:checked + .shell .navItemInner {
+  justify-content: center;
 }
 
 .sidebar {
@@ -14,11 +51,18 @@
   backdrop-filter: blur(12px);
 }
 
+.brandRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 4px 0 16px;
+}
+
 .brand {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 4px 0 16px;
 }
 
 .logo {
@@ -43,6 +87,33 @@
   color: var(--muted2);
 }
 
+.collapseBtn {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(0, 0, 0, 0.15);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.collapseBtn:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.collapseGlyph {
+  display: inline-block;
+  transition: transform 160ms ease;
+}
+
+.collapseLabel {
+  font-weight: 650;
+}
+
 .nav {
   display: grid;
   gap: 6px;
@@ -55,6 +126,17 @@
   border: 1px solid transparent;
   color: var(--muted);
   font-weight: 650;
+  display: flex;
+}
+
+.navItemInner {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.navLabel {
+  white-space: nowrap;
 }
 
 .navItem:hover {
