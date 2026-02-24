@@ -24,7 +24,6 @@
 }
 
 .navToggle:checked + .shell .brandText,
-.navToggle:checked + .shell .collapseLabel,
 .navToggle:checked + .shell .navLabel {
   display: none;
 }
@@ -89,9 +88,10 @@
 
 .collapseBtn {
   display: inline-flex;
-  gap: 8px;
   align-items: center;
-  padding: 8px 10px;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.10);
   background: rgba(0, 0, 0, 0.15);
@@ -110,9 +110,7 @@
   transition: transform 160ms ease;
 }
 
-.collapseLabel {
-  font-weight: 650;
-}
+/* collapse label removed (icon-only toggle) */
 
 .nav {
   display: grid;

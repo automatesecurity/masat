@@ -32,11 +32,10 @@ export default function AppShell({
             </div>
           </div>
 
-          <label className={styles.collapseBtn} htmlFor="masat-nav-toggle" title="Collapse sidebar">
+          <label className={styles.collapseBtn} htmlFor="masat-nav-toggle" title="Collapse/expand sidebar" aria-label="Collapse/expand sidebar">
             <span className={styles.collapseGlyph} aria-hidden>
               ◀
             </span>
-            <span className={styles.collapseLabel}>Collapse</span>
           </label>
         </div>
 
