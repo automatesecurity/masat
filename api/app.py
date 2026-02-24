@@ -508,6 +508,77 @@ def run_detail(run_id: int) -> dict[str, Any]:
     return {"run": run}
 
 
+@app.get("/runs/{run_id}/delta")
+def run_delta(run_id: int) -> dict[str, Any]:
+    """Return best-effort deltas vs the prior run for the same target.
+
+    Used to power an evidence-first story: what changed, not just what we saw.
+    """
+
+    runs_db = default_db_path()
+    run = get_run(runs_db, run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    target = str(run.get("target") or "")
+    host = _run_host(target)
+
+    # Find the previous run for the same host (best-effort).
+    candidates = list_runs_matching_host(runs_db, host, limit=200)
+    candidates = sorted(candidates, key=lambda r: int(r.get("ts") or 0), reverse=True)
+
+    prev = None
+    for r in candidates:
+        rid = int(r.get("id") or 0)
+        ts = int(r.get("ts") or 0)
+        if rid and rid != int(run_id) and ts < int(run.get("ts") or 0):
+            prev = get_run(runs_db, rid)
+            break
+
+    def _finding_key(f: dict[str, Any]) -> str:
+        return f"{str(f.get('category') or '').strip().lower()}|{str(f.get('title') or '').strip().lower()}"
+
+    cur_findings = [f for f in (run.get("findings") or []) if isinstance(f, dict)]
+    prev_findings = [f for f in (prev.get("findings") or []) if isinstance(f, dict)] if prev else []
+
+    cur_keys = {_finding_key(f) for f in cur_findings}
+    prev_keys = {_finding_key(f) for f in prev_findings}
+
+    new_keys = sorted(list(cur_keys - prev_keys))
+    gone_keys = sorted(list(prev_keys - cur_keys))
+
+    # Ports delta (derived from raw results).
+    cur_ports = {str(p.get("port") or "").strip() for p in extract_open_ports_from_results(run.get("results") or {})}
+    prev_ports = {str(p.get("port") or "").strip() for p in extract_open_ports_from_results(prev.get("results") or {})} if prev else set()
+
+    new_ports = sorted([p for p in (cur_ports - prev_ports) if p])
+    closed_ports = sorted([p for p in (prev_ports - cur_ports) if p])
+
+    def _pick(keys: list[str], source: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        want = set(keys)
+        out: list[dict[str, Any]] = []
+        for f in source:
+            if _finding_key(f) in want:
+                out.append({
+                    "category": f.get("category") or "",
+                    "title": f.get("title") or "",
+                    "severity": int(f.get("severity") or 0),
+                    "remediation": f.get("remediation") or "",
+                })
+        out.sort(key=lambda x: int(x.get("severity") or 0), reverse=True)
+        return out[:50]
+
+    return {
+        "runId": int(run_id),
+        "target": target,
+        "prevRunId": int(prev.get("id") or 0) if prev else None,
+        "newFindings": _pick(new_keys, cur_findings),
+        "resolvedFindings": _pick(gone_keys, prev_findings),
+        "newPorts": new_ports,
+        "closedPorts": closed_ports,
+    }
+
+
 @app.get("/assets")
 def assets(
     limit: int = 30,

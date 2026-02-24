@@ -192,11 +192,27 @@ export async function fetchAssets(limit = 200): Promise<AssetRow[]> {
   return (await fetchAssetsPage({ limit, offset: 0 })).items;
 }
 
+export type RunDelta = {
+  runId: number;
+  target: string;
+  prevRunId: number | null;
+  newFindings: Array<{ category: string; title: string; severity: number; remediation: string }>;
+  resolvedFindings: Array<{ category: string; title: string; severity: number; remediation: string }>;
+  newPorts: string[];
+  closedPorts: string[];
+};
+
 export async function fetchRun(id: number): Promise<RunDetail> {
   const res = await fetch(`${baseUrl()}/runs/${id}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`MASAT /runs/${id} failed: ${res.status}`);
   const data = await res.json();
   return data.run as RunDetail;
+}
+
+export async function fetchRunDelta(id: number): Promise<RunDelta> {
+  const res = await fetch(`${baseUrl()}/runs/${id}/delta`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`MASAT /runs/${id}/delta failed: ${res.status}`);
+  return (await res.json()) as RunDelta;
 }
 
 export async function fetchAssetDetail(value: string): Promise<AssetDetail> {
