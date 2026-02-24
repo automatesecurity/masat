@@ -36,21 +36,22 @@ class Asset:
 
 
 def default_assets_db_path() -> str:
-    base = os.path.join(os.path.expanduser("~"), ".masat")
+    base = os.environ.get("MASAT_DATA_DIR") or os.path.join(os.path.expanduser("~"), ".masat")
     return os.path.join(base, "assets.db")
 
 
 def _connect(db_path: str) -> sqlite3.Connection:
-    # Treat db_path as untrusted. Only auto-create the default MASAT directory.
+    # IMPORTANT: `db_path` can be user-provided (CLI/API). Treat it as untrusted.
+    # Restrict DB paths to the MASAT data directory (~/.masat) to avoid path traversal
+    # and other unsafe filesystem access patterns.
+
     default_dir = os.path.realpath(os.path.dirname(default_assets_db_path()))
     resolved = os.path.realpath(db_path)
 
-    if os.path.commonpath([resolved, default_dir]) == default_dir:
-        os.makedirs(default_dir, exist_ok=True)
-    else:
-        parent = os.path.dirname(resolved)
-        if not os.path.isdir(parent):
-            raise ValueError("Custom assets DB path directory must already exist")
+    if os.path.commonpath([resolved, default_dir]) != default_dir:
+        raise ValueError("Custom assets DB paths are not allowed. Use the default MASAT data directory (~/.masat).")
+
+    os.makedirs(default_dir, exist_ok=True)
 
     conn = sqlite3.connect(resolved)
     conn.execute(

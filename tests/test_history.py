@@ -10,7 +10,8 @@ def test_default_db_path_endswith_db():
 
 def test_store_and_list_runs_roundtrip():
     with tempfile.TemporaryDirectory() as td:
-        db = os.path.join(td, "t.db")
+        os.environ["MASAT_DATA_DIR"] = td
+        db = default_db_path()
         run_id = store_run(db, "example.com", ["web"], {"x": 1}, [{"category": "c", "title": "t", "severity": 0, "remediation": "", "details": ""}])
         assert run_id > 0
         runs = list_runs(db)

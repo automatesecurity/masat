@@ -131,6 +131,14 @@ def _tls_san_names(hostname: str, *, timeout_s: float = 3.0) -> list[str]:
         return []
 
     ctx = ssl.create_default_context()
+
+    # Disallow legacy TLS versions.
+    try:
+        ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+    except Exception:
+        # Older Pythons may not support TLSVersion; best-effort.
+        pass
+
     # We are mining cert names; verification isn't the goal.
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
