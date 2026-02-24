@@ -17,84 +17,75 @@ export default function AppShell({
   children: ReactNode;
 }) {
   return (
-    <div className={styles.shell}>
-      <aside className={styles.sidebar}>
-        <div className={styles.brand}>
-          <div className={styles.logo} />
-          <div className={styles.brandText}>
-            <div className={styles.brandName}>MASAT</div>
-            <div className={styles.brandSub}>Attack surface signals</div>
+    <div className={styles.shellWrap}>
+      {/* CSS-only sidebar collapse (no client JS). */}
+      <input id="masat-nav-toggle" className={styles.navToggle} type="checkbox" aria-label="Toggle sidebar" />
+
+      <div className={styles.shell}>
+        <aside className={styles.sidebar}>
+        <div className={styles.brandRow}>
+          <div className={styles.brand}>
+            <div className={styles.logo} />
+            <div className={styles.brandText}>
+              <div className={styles.brandName}>MASAT</div>
+              <div className={styles.brandSub}>Attack surface signals</div>
+            </div>
           </div>
+
+          <label className={styles.collapseBtn} htmlFor="masat-nav-toggle" title="Collapse/expand sidebar" aria-label="Collapse/expand sidebar">
+            <span className={styles.collapseGlyph} aria-hidden>
+              ◀
+            </span>
+          </label>
         </div>
 
         <nav className={styles.nav} aria-label="Primary">
-          <Link
-            className={`${styles.navItem} ${active === "dashboard" ? styles.navItemActive : ""}`}
-            href="/"
-          >
-            <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+          <Link className={`${styles.navItem} ${active === "dashboard" ? styles.navItemActive : ""}`} href="/">
+            <span className={styles.navItemInner}>
               <Icon name="dashboard" />
-              Dashboard
+              <span className={styles.navLabel}>Dashboard</span>
             </span>
           </Link>
-          <Link
-            className={`${styles.navItem} ${active === "changes" ? styles.navItemActive : ""}`}
-            href="/changes"
-          >
-            <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+          <Link className={`${styles.navItem} ${active === "changes" ? styles.navItemActive : ""}`} href="/changes">
+            <span className={styles.navItemInner}>
               <Icon name="changes" />
-              Changes
+              <span className={styles.navLabel}>Changes</span>
             </span>
           </Link>
-          <Link
-            className={`${styles.navItem} ${active === "scan" ? styles.navItemActive : ""}`}
-            href="/scan"
-          >
-            <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+          <Link className={`${styles.navItem} ${active === "scan" ? styles.navItemActive : ""}`} href="/scan">
+            <span className={styles.navItemInner}>
               <Icon name="scan" />
-              Assess
+              <span className={styles.navLabel}>Assess</span>
             </span>
           </Link>
-          <Link
-            className={`${styles.navItem} ${active === "seed" ? styles.navItemActive : ""}`}
-            href="/seed"
-          >
-            <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+          <Link className={`${styles.navItem} ${active === "seed" ? styles.navItemActive : ""}`} href="/seed">
+            <span className={styles.navItemInner}>
               <Icon name="seed" />
-              Seeding
+              <span className={styles.navLabel}>Seeding</span>
             </span>
           </Link>
-          <Link
-            className={`${styles.navItem} ${active === "runs" ? styles.navItemActive : ""}`}
-            href="/runs"
-          >
-            <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+          <Link className={`${styles.navItem} ${active === "runs" ? styles.navItemActive : ""}`} href="/runs">
+            <span className={styles.navItemInner}>
               <Icon name="runs" />
-              Evidence
+              <span className={styles.navLabel}>Evidence</span>
             </span>
           </Link>
-          <Link
-            className={`${styles.navItem} ${active === "assets" ? styles.navItemActive : ""}`}
-            href="/assets"
-          >
-            <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+          <Link className={`${styles.navItem} ${active === "assets" ? styles.navItemActive : ""}`} href="/assets">
+            <span className={styles.navItemInner}>
               <Icon name="assets" />
-              Assets
+              <span className={styles.navLabel}>Assets</span>
             </span>
           </Link>
-          <Link
-            className={`${styles.navItem} ${active === "issues" ? styles.navItemActive : ""}`}
-            href="/issues"
-          >
-            <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+          <Link className={`${styles.navItem} ${active === "issues" ? styles.navItemActive : ""}`} href="/issues">
+            <span className={styles.navItemInner}>
               <Icon name="changes" />
-              Issues
+              <span className={styles.navLabel}>Issues</span>
             </span>
           </Link>
         </nav>
-      </aside>
+        </aside>
 
-      <main className={styles.content}>
+        <main className={styles.content}>
         <div className={styles.topbar}>
           <div className={styles.pageTitle}>
             <h1 className={styles.title}>{title}</h1>
@@ -110,7 +101,8 @@ export default function AppShell({
         </div>
 
         <div className={styles.grid}>{children}</div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
