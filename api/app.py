@@ -315,6 +315,9 @@ def _sync_issues_from_latest_runs(
                 first_seen_ts=now,
                 last_seen_ts=now,
                 last_run_id=rid,
+                status_updated_ts=now,
+                resolved_ts=0,
+                reopened_count=0,
                 remediation=remediation,
                 details=details,
             )

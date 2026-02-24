@@ -28,6 +28,12 @@ class Issue:
     first_seen_ts: int
     last_seen_ts: int
     last_run_id: int
+
+    # Remediation workflow fields
+    status_updated_ts: int
+    resolved_ts: int  # 0 when unresolved; ts when marked fixed/accepted/false_positive
+    reopened_count: int
+
     remediation: str
     details: str
 
@@ -66,11 +72,29 @@ def _connect(db_path: str) -> sqlite3.Connection:
           first_seen_ts INTEGER NOT NULL,
           last_seen_ts INTEGER NOT NULL,
           last_run_id INTEGER NOT NULL,
+
+          status_updated_ts INTEGER NOT NULL DEFAULT 0,
+          resolved_ts INTEGER NOT NULL DEFAULT 0,
+          reopened_count INTEGER NOT NULL DEFAULT 0,
+
           remediation TEXT NOT NULL,
           details TEXT NOT NULL
         )
         """
     )
+
+    # Best-effort lightweight migrations.
+    # SQLite doesn't support IF NOT EXISTS for ADD COLUMN; ignore failures.
+    for stmt in [
+        "ALTER TABLE issues ADD COLUMN status_updated_ts INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE issues ADD COLUMN resolved_ts INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE issues ADD COLUMN reopened_count INTEGER NOT NULL DEFAULT 0",
+    ]:
+        try:
+            conn.execute(stmt)
+        except Exception:
+            pass
+
     conn.commit()
     return conn
 
@@ -82,7 +106,9 @@ def get_issue(db_path: str, fingerprint: str) -> Issue | None:
         cur.execute(
             """
             SELECT fingerprint, asset, category, title, severity, status, owner, environment,
-                   first_seen_ts, last_seen_ts, last_run_id, remediation, details
+                   first_seen_ts, last_seen_ts, last_run_id,
+                   status_updated_ts, resolved_ts, reopened_count,
+                   remediation, details
             FROM issues
             WHERE fingerprint=?
             """,
@@ -103,8 +129,11 @@ def get_issue(db_path: str, fingerprint: str) -> Issue | None:
             first_seen_ts=int(r[8] or 0),
             last_seen_ts=int(r[9] or 0),
             last_run_id=int(r[10] or 0),
-            remediation=str(r[11] or ""),
-            details=str(r[12] or ""),
+            status_updated_ts=int(r[11] or 0),
+            resolved_ts=int(r[12] or 0),
+            reopened_count=int(r[13] or 0),
+            remediation=str(r[14] or ""),
+            details=str(r[15] or ""),
         )
     finally:
         conn.close()
@@ -114,18 +143,47 @@ def upsert_issue(db_path: str, issue: Issue) -> None:
     """Upsert issue while preserving triage fields.
 
     Preserves:
-    - status
+    - status (unless we auto-reopen)
     - owner
     - environment
     - first_seen_ts
+
+    Auto-reopen behavior:
+    - If an issue was marked fixed/accepted/false_positive but is observed again in a new run,
+      reopen it (status=open) and increment reopened_count.
     """
 
     existing = get_issue(db_path, issue.fingerprint)
 
     first_seen_ts = existing.first_seen_ts if existing else issue.first_seen_ts
-    status = existing.status if existing else issue.status
     owner = existing.owner if existing and existing.owner else issue.owner
     environment = existing.environment if existing and existing.environment else issue.environment
+
+    now = now_ts()
+
+    if existing:
+        was_resolved = existing.status in {"fixed", "accepted", "false_positive"}
+        seen_again = int(issue.last_seen_ts) > int(existing.last_seen_ts)
+
+        if was_resolved and seen_again:
+            status = "open"
+            status_updated_ts = now
+            resolved_ts = 0
+            reopened_count = int(existing.reopened_count or 0) + 1
+        else:
+            status = existing.status
+            status_updated_ts = int(existing.status_updated_ts or 0)
+            resolved_ts = int(existing.resolved_ts or 0)
+            reopened_count = int(existing.reopened_count or 0)
+
+        # Backfill missing status_updated_ts for older DBs.
+        if not status_updated_ts:
+            status_updated_ts = now
+    else:
+        status = issue.status or "open"
+        status_updated_ts = now
+        resolved_ts = now if status in {"fixed", "accepted", "false_positive"} else 0
+        reopened_count = 0
 
     conn = _connect(db_path)
     try:
@@ -134,12 +192,20 @@ def upsert_issue(db_path: str, issue: Issue) -> None:
             """
             INSERT INTO issues (
               fingerprint, asset, category, title, severity, status, owner, environment,
-              first_seen_ts, last_seen_ts, last_run_id, remediation, details
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              first_seen_ts, last_seen_ts, last_run_id,
+              status_updated_ts, resolved_ts, reopened_count,
+              remediation, details
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(fingerprint) DO UPDATE SET
               severity=excluded.severity,
+              status=excluded.status,
+              owner=excluded.owner,
+              environment=excluded.environment,
               last_seen_ts=excluded.last_seen_ts,
               last_run_id=excluded.last_run_id,
+              status_updated_ts=excluded.status_updated_ts,
+              resolved_ts=excluded.resolved_ts,
+              reopened_count=excluded.reopened_count,
               remediation=excluded.remediation,
               details=excluded.details
             """,
@@ -155,6 +221,9 @@ def upsert_issue(db_path: str, issue: Issue) -> None:
                 int(first_seen_ts),
                 int(issue.last_seen_ts),
                 int(issue.last_run_id),
+                int(status_updated_ts),
+                int(resolved_ts),
+                int(reopened_count),
                 issue.remediation,
                 issue.details,
             ),
@@ -168,10 +237,18 @@ def update_issue_status(db_path: str, fingerprint: str, *, status: str | None = 
     conn = _connect(db_path)
     try:
         cur = conn.cursor()
+        now = now_ts()
+
         if status is not None:
-            cur.execute("UPDATE issues SET status=? WHERE fingerprint=?", (status, fingerprint))
+            resolved_ts = now if status in {"fixed", "accepted", "false_positive"} else 0
+            cur.execute(
+                "UPDATE issues SET status=?, status_updated_ts=?, resolved_ts=? WHERE fingerprint=?",
+                (status, now, resolved_ts, fingerprint),
+            )
+
         if owner is not None:
             cur.execute("UPDATE issues SET owner=? WHERE fingerprint=?", (owner, fingerprint))
+
         conn.commit()
     finally:
         conn.close()
@@ -199,7 +276,9 @@ def list_issues(db_path: str, *, limit: int = 30, offset: int = 0, status: str |
             cur.execute(
                 """
                 SELECT fingerprint, asset, category, title, severity, status, owner, environment,
-                       first_seen_ts, last_seen_ts, last_run_id, remediation, details
+                       first_seen_ts, last_seen_ts, last_run_id,
+                       status_updated_ts, resolved_ts, reopened_count,
+                       remediation, details
                 FROM issues
                 WHERE status=?
                 ORDER BY severity DESC, last_seen_ts DESC
@@ -211,7 +290,9 @@ def list_issues(db_path: str, *, limit: int = 30, offset: int = 0, status: str |
             cur.execute(
                 """
                 SELECT fingerprint, asset, category, title, severity, status, owner, environment,
-                       first_seen_ts, last_seen_ts, last_run_id, remediation, details
+                       first_seen_ts, last_seen_ts, last_run_id,
+                       status_updated_ts, resolved_ts, reopened_count,
+                       remediation, details
                 FROM issues
                 ORDER BY severity DESC, last_seen_ts DESC
                 LIMIT ? OFFSET ?
@@ -235,8 +316,11 @@ def list_issues(db_path: str, *, limit: int = 30, offset: int = 0, status: str |
                     first_seen_ts=int(r[8] or 0),
                     last_seen_ts=int(r[9] or 0),
                     last_run_id=int(r[10] or 0),
-                    remediation=str(r[11] or ""),
-                    details=str(r[12] or ""),
+                    status_updated_ts=int(r[11] or 0),
+                    resolved_ts=int(r[12] or 0),
+                    reopened_count=int(r[13] or 0),
+                    remediation=str(r[14] or ""),
+                    details=str(r[15] or ""),
                 )
             )
         return out
