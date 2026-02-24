@@ -48,7 +48,7 @@ export default function IssuesTable({ items }: { items: IssueRow[] }) {
 
   return (
     <div className={styles.tableWrap}>
-      <table className={styles.table} style={{ minWidth: 1200 }}>
+      <table className={styles.table} style={{ minWidth: 1300 }}>
         <thead>
           <tr>
             <th style={{ width: 110 }}>Severity</th>
@@ -57,6 +57,7 @@ export default function IssuesTable({ items }: { items: IssueRow[] }) {
             <th style={{ width: 170 }}>Status</th>
             <th style={{ width: 200 }}>Owner</th>
             <th style={{ width: 160 }}>Age</th>
+            <th style={{ width: 200 }}>Verification</th>
             <th style={{ width: 160 }}>Last seen</th>
           </tr>
         </thead>
@@ -119,10 +120,40 @@ export default function IssuesTable({ items }: { items: IssueRow[] }) {
                 </td>
                 <td>
                   <div style={{ fontWeight: 700 }}>{Math.max(0, Math.floor((Date.now() / 1000 - (i.first_seen_ts || 0)) / 86400))}d</div>
-                  <div className={styles.meta}>
-                    Since {new Date((i.first_seen_ts || 0) * 1000).toLocaleDateString()}
-                  </div>
+                  <div className={styles.meta}>Since {new Date((i.first_seen_ts || 0) * 1000).toLocaleDateString()}</div>
                   {i.reopened_count ? <div className={styles.meta}>Reopened: {i.reopened_count}</div> : null}
+                </td>
+                <td>
+                  {i.status === "fixed" ? (
+                    (() => {
+                      const resolved = Number(i.resolved_ts || 0);
+                      const lastSeen = Number(i.last_seen_ts || 0);
+                      const verified = resolved > 0 && lastSeen > 0 && lastSeen < resolved;
+                      return verified ? (
+                        <>
+                          <span className={`${styles.badge} ${styles.badgeLow}`}>Verified fixed</span>
+                          <div className={styles.meta}>Not seen since marked fixed</div>
+                        </>
+                      ) : (
+                        <>
+                          <span className={`${styles.badge} ${styles.badgeMed}`}>Unverified</span>
+                          <div className={styles.meta}>Still needs a clean run after fix</div>
+                        </>
+                      );
+                    })()
+                  ) : i.status === "accepted" ? (
+                    <>
+                      <span className={`${styles.badge} ${styles.badgeLow}`}>Accepted</span>
+                      <div className={styles.meta}>Risk accepted</div>
+                    </>
+                  ) : i.status === "false_positive" ? (
+                    <>
+                      <span className={`${styles.badge} ${styles.badgeLow}`}>False positive</span>
+                      <div className={styles.meta}>Suppressed</div>
+                    </>
+                  ) : (
+                    <div className={styles.meta}>—</div>
+                  )}
                 </td>
                 <td>
                   <Link className={styles.actionLink} href={`/runs/${i.last_run_id}`}>
@@ -136,7 +167,7 @@ export default function IssuesTable({ items }: { items: IssueRow[] }) {
           })}
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={7} className={styles.meta}>
+              <td colSpan={8} className={styles.meta}>
                 No issues yet.
               </td>
             </tr>
