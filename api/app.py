@@ -371,6 +371,51 @@ def issues(limit: int = 30, offset: int = 0, status: str | None = None, owner: s
     return {"issues": page, "total": total, "limit": lim, "offset": off}
 
 
+@app.get("/issues/summary")
+def issues_summary(owner: str | None = None) -> dict[str, Any]:
+    """Lightweight rollups for queue health (MTTR/age).
+
+    This is an MVP endpoint to support a ratings-style posture story:
+    "Do we find things? Do we fix them? How fast?"
+    """
+
+    db_path = default_issues_db_path()
+    items = [i.to_dict() for i in list_issues(db_path, limit=5000, offset=0, status=None)]
+
+    if owner:
+        o = owner.strip().lower()
+        items = [i for i in items if str(i.get("owner") or "").strip().lower() == o]
+
+    counts: dict[str, int] = {}
+    open_ages_days: list[float] = []
+    mttr_days: list[float] = []
+
+    now = now_ts()
+
+    for i in items:
+        st = str(i.get("status") or "open")
+        counts[st] = counts.get(st, 0) + 1
+
+        first_seen = int(i.get("first_seen_ts") or 0)
+        resolved_ts = int(i.get("resolved_ts") or 0)
+
+        if st in {"open", "triaged", "in_progress"} and first_seen:
+            open_ages_days.append(max(0.0, (now - first_seen) / 86400.0))
+
+        if st == "fixed" and first_seen and resolved_ts and resolved_ts >= first_seen:
+            mttr_days.append((resolved_ts - first_seen) / 86400.0)
+
+    def _avg(xs: list[float]) -> float | None:
+        return (sum(xs) / len(xs)) if xs else None
+
+    return {
+        "counts": counts,
+        "avg_open_age_days": _avg(open_ages_days),
+        "avg_mttr_days_fixed": _avg(mttr_days),
+        "total": len(items),
+    }
+
+
 @app.post("/issues/update")
 def issue_update(req: IssueUpdateRequest) -> dict[str, Any]:
     if not req.fingerprint:

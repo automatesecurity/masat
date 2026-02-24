@@ -85,6 +85,13 @@ export type DashboardResponse = {
 
 export type Page<T> = { items: T[]; total: number; limit: number; offset: number };
 
+export type IssuesSummary = {
+  counts: Record<string, number>;
+  avg_open_age_days: number | null;
+  avg_mttr_days_fixed: number | null;
+  total: number;
+};
+
 export type AssetDetail = {
   asset: AssetRow | null;
   latestRun: RunRow | null;
@@ -263,6 +270,16 @@ export async function fetchIssuesPage(params?: {
     limit: Number(data.limit || limit),
     offset: Number(data.offset || offset),
   };
+}
+
+export async function fetchIssuesSummary(params?: { owner?: string }): Promise<IssuesSummary> {
+  const sp = new URLSearchParams();
+  if (params?.owner) sp.set("owner", params.owner);
+
+  const qs = sp.toString();
+  const res = await fetch(`${baseUrl()}/issues/summary${qs ? `?${qs}` : ""}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`MASAT /issues/summary failed: ${res.status}`);
+  return (await res.json()) as IssuesSummary;
 }
 
 export async function updateIssue(params: { fingerprint: string; status?: string; owner?: string }): Promise<void> {

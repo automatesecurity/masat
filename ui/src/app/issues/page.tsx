@@ -1,7 +1,7 @@
 import AppShell from "@/app/_components/AppShell";
 import Pagination from "@/app/_components/Pagination";
 import styles from "@/app/_components/appShell.module.css";
-import { fetchIssuesPage } from "@/lib/masatApi";
+import { fetchIssuesPage, fetchIssuesSummary } from "@/lib/masatApi";
 import Link from "next/link";
 import IssuesTable from "./IssuesTable";
 
@@ -23,27 +23,40 @@ export default async function IssuesPage({
   const page = Math.max(1, Number(pageRaw) || 1);
   const offset = (page - 1) * pageSize;
 
-  const issuesPage = await fetchIssuesPage({
-    limit: pageSize,
-    offset,
-    status: status || undefined,
-    owner: owner || undefined,
-  }).catch(() => ({
-    items: [],
-    total: 0,
-    limit: pageSize,
-    offset,
-  }));
+  const [issuesPage, summary] = await Promise.all([
+    fetchIssuesPage({
+      limit: pageSize,
+      offset,
+      status: status || undefined,
+      owner: owner || undefined,
+    }).catch(() => ({
+      items: [],
+      total: 0,
+      limit: pageSize,
+      offset,
+    })),
+    fetchIssuesSummary({ owner: owner || undefined }).catch(() => ({
+      counts: {},
+      avg_open_age_days: null,
+      avg_mttr_days_fixed: null,
+      total: 0,
+    })),
+  ]);
 
   return (
     <AppShell
       active="dashboard"
       title="Issues"
-      subtitle="Top issues impacting posture. This is an actionable queue (triage workflow is coming next)."
+      subtitle="Actionable queue. Triage, assign, and track fix velocity."
       pills={
         <>
           <span className={styles.pill}>Total: {issuesPage.total}</span>
           {status ? <span className={styles.pill}>Status: {status}</span> : null}
+          {owner ? <span className={styles.pill}>Owner: {owner}</span> : null}
+          {summary.avg_open_age_days !== null ? <span className={styles.pill}>Avg open age: {summary.avg_open_age_days.toFixed(1)}d</span> : null}
+          {summary.avg_mttr_days_fixed !== null ? (
+            <span className={styles.pill}>Avg MTTR (fixed): {summary.avg_mttr_days_fixed.toFixed(1)}d</span>
+          ) : null}
         </>
       }
     >
