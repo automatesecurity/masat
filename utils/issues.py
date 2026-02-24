@@ -42,20 +42,20 @@ class Issue:
 
 
 def default_issues_db_path() -> str:
-    base = os.path.join(os.path.expanduser("~"), ".masat")
+    base = os.environ.get("MASAT_DATA_DIR") or os.path.join(os.path.expanduser("~"), ".masat")
     return os.path.join(base, "issues.db")
 
 
 def _connect(db_path: str) -> sqlite3.Connection:
+    # IMPORTANT: `db_path` can be user-provided (CLI/API). Treat it as untrusted.
+    # Restrict DB paths to the MASAT data directory (~/.masat).
     default_dir = os.path.realpath(os.path.dirname(default_issues_db_path()))
     resolved = os.path.realpath(db_path)
 
-    if os.path.commonpath([resolved, default_dir]) == default_dir:
-        os.makedirs(default_dir, exist_ok=True)
-    else:
-        parent = os.path.dirname(resolved)
-        if not os.path.isdir(parent):
-            raise ValueError("Custom issues DB path directory must already exist")
+    if os.path.commonpath([resolved, default_dir]) != default_dir:
+        raise ValueError("Custom issues DB paths are not allowed. Use the default MASAT data directory (~/.masat).")
+
+    os.makedirs(default_dir, exist_ok=True)
 
     conn = sqlite3.connect(resolved)
     conn.execute(

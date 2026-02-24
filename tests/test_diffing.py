@@ -1,7 +1,7 @@
 import os
 import tempfile
 
-from utils.history import store_run, get_run, list_runs_for_target
+from utils.history import store_run, get_run, list_runs_for_target, default_db_path
 from utils.diffing import diff_exposure, diff_findings
 
 
@@ -51,7 +51,8 @@ def test_exposure_diff_ports_and_server_header():
 
 def test_history_get_run_and_list_runs_for_target():
     with tempfile.TemporaryDirectory() as td:
-        db_path = os.path.join(td, "masat.db")
+        os.environ["MASAT_DATA_DIR"] = td
+        db_path = default_db_path()
         store_run(db_path, "example.com", ["web"], {"r": 1}, [{"asset": "example.com", "category": "c", "title": "a"}])
         store_run(db_path, "example.com", ["web"], {"r": 2}, [{"asset": "example.com", "category": "c", "title": "b"}])
 

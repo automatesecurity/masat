@@ -13,10 +13,12 @@ def default_db_path() -> str:
     """Return the default DB path (no side effects).
 
     Note: do not create directories here. Only create the directory when the DB
-    is actually used (e.g., when --store is set).
+    is actually used.
+
+    You can override the MASAT data directory via MASAT_DATA_DIR.
     """
 
-    base = os.path.join(os.path.expanduser("~"), ".masat")
+    base = os.environ.get("MASAT_DATA_DIR") or os.path.join(os.path.expanduser("~"), ".masat")
     return os.path.join(base, "masat.db")
 
 
@@ -30,14 +32,11 @@ def _connect(db_path: str) -> sqlite3.Connection:
     default_dir = os.path.realpath(os.path.dirname(default_db_path()))
     resolved = os.path.realpath(db_path)
 
-    # Only auto-create the default MASAT directory. For any custom path, require
-    # the directory to already exist (avoid unsafe directory creation).
-    if os.path.commonpath([resolved, default_dir]) == default_dir:
-        os.makedirs(default_dir, exist_ok=True)
-    else:
-        parent = os.path.dirname(resolved)
-        if not os.path.isdir(parent):
-            raise ValueError("Custom DB path directory must already exist")
+    # Restrict DB paths to the MASAT data directory.
+    if os.path.commonpath([resolved, default_dir]) != default_dir:
+        raise ValueError("Custom DB paths are not allowed. Use the default MASAT data directory (~/.masat).")
+
+    os.makedirs(default_dir, exist_ok=True)
 
     conn = sqlite3.connect(resolved)
     conn.execute(
