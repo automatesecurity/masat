@@ -1,6 +1,6 @@
 import AppShell from "@/app/_components/AppShell";
 import styles from "@/app/_components/appShell.module.css";
-import { fetchRun, type Finding } from "@/lib/masatApi";
+import { fetchRun, fetchRunDelta, type Finding } from "@/lib/masatApi";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,7 @@ export default async function RunDetailPage({
   const { id } = await params;
   const runId = Number(id);
 
-  const run = await fetchRun(runId);
+  const [run, delta] = await Promise.all([fetchRun(runId), fetchRunDelta(runId).catch(() => null)]);
   const findings = (run.findings || []).slice().sort(bySeverityDesc);
 
   return (
@@ -60,6 +60,65 @@ export default async function RunDetailPage({
           </div>
         </div>
       </section>
+
+      {delta ? (
+        <section className={styles.card}>
+          <div className={styles.cardHeader}>
+            <div className={styles.sectionTitle}>What changed</div>
+            <div className={styles.meta}>
+              Compared to {delta.prevRunId ? `run #${delta.prevRunId}` : "the prior run"}
+            </div>
+          </div>
+
+          {!delta.prevRunId ? (
+            <div className={styles.meta}>No prior run found for this target yet.</div>
+          ) : (
+            <>
+              <div className={styles.row} style={{ gap: 20, flexWrap: "wrap" }}>
+                <span className={styles.pill}>New findings: {delta.newFindings.length}</span>
+                <span className={styles.pill}>Resolved findings: {delta.resolvedFindings.length}</span>
+                <span className={styles.pill}>New ports: {delta.newPorts.length}</span>
+                <span className={styles.pill}>Closed ports: {delta.closedPorts.length}</span>
+              </div>
+
+              {delta.newPorts.length || delta.closedPorts.length ? (
+                <div className={styles.meta} style={{ marginTop: 10 }}>
+                  <strong>Ports:</strong>{" "}
+                  {delta.newPorts.length ? `+${delta.newPorts.join(", ")}` : ""}
+                  {delta.newPorts.length && delta.closedPorts.length ? "  " : ""}
+                  {delta.closedPorts.length ? `-${delta.closedPorts.join(", ")}` : ""}
+                </div>
+              ) : null}
+
+              {delta.newFindings.length ? (
+                <div style={{ marginTop: 10 }}>
+                  <div className={styles.sectionTitle}>New findings</div>
+                  <ul className={styles.meta} style={{ marginTop: 6, paddingLeft: 18 }}>
+                    {delta.newFindings.slice(0, 12).map((f, idx) => (
+                      <li key={`${f.category}-${f.title}-${idx}`}>
+                        <strong>{f.title}</strong> ({f.category})
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {delta.resolvedFindings.length ? (
+                <div style={{ marginTop: 10 }}>
+                  <div className={styles.sectionTitle}>Resolved since last run</div>
+                  <ul className={styles.meta} style={{ marginTop: 6, paddingLeft: 18 }}>
+                    {delta.resolvedFindings.slice(0, 12).map((f, idx) => (
+                      <li key={`${f.category}-${f.title}-${idx}`}>
+                        <strong>{f.title}</strong> ({f.category})
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </>
+          )}
+        </section>
+      ) : null}
 
       <section className={styles.card}>
         <div className={styles.cardHeader}>
